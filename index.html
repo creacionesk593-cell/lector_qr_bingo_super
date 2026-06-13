@@ -9,7 +9,7 @@
     header { background: #4CAF50; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     main { padding: 20px; max-width: 600px; margin: auto; }
     
-    /* CORRECCIÓN VISUAL DEL ESCÁNER: Fondo claro y bordes definidos */
+    /* Lector QR con fondo claro para legibilidad del texto de fondo */
     #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; }
     #reader video { width: 100% !important; object-fit: cover; }
     
@@ -18,7 +18,6 @@
     .formulario input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
     .formulario input:focus { border-color: #4CAF50; outline: none; }
     
-    /* Alertas del sistema */
     .banner-alerta { background: #ff7675; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; }
     .info-config { background: #e8f4fd; color: #2980b9; padding: 10px; border-radius: 6px; font-size: 0.9rem; margin-bottom: 15px; text-align: center; font-weight: 500; }
     
@@ -35,10 +34,16 @@
     #resultadoQR { margin-top: 15px; padding: 10px; background: #eef2f7; border-radius: 6px; text-align: center; font-size: 0.95rem; }
     #contador { margin-top: 10px; font-size: 16px; color: #4CAF50; font-weight: bold; text-align: center; }
     .loading { opacity: 0.5; pointer-events: none; }
+    
+    /* Botón rojo de eliminar cartón */
+    .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; }
+    .btn-eliminar:hover { background: #e84393; }
   </style>
   
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  
+  <script src="conexion.js"></script>
 </head>
 <body>
   <header>
@@ -47,7 +52,7 @@
   <main id="contenidoPrincipal">
     
     <div id="bannerCierre" class="banner-alerta">⚠️ EL REGISTRO DE CARTONES YA ESTÁ CERRADO</div>
-    <div id="infoConfig" class="info-config">Cargando parámetros del sistema desde la nube...</div>
+    <div id="infoConfig" class="info-config">Sincronizando parámetros con la base de datos...</div>
 
     <div class="formulario" style="margin-top:0;">
       <h3>Escanear Código QR</h3>
@@ -77,23 +82,17 @@
             <th>#</th>
             <th>Serie (Cartón)</th>
             <th>Ubicación</th>
-          </tr>
+            <th>Acción</th> </tr>
         </thead>
         <tbody>
-          <tr><td colspan="3" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>
+          <tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>
         </tbody>
       </table>
     </div>
   </main>
 
   <script>
-    // CREDENCIALES DE TU PROYECTO SUPABASE
-    const SUPABASE_URL = "https://mfwkbomubeydxufhkcmg.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md2tib211YmV5ZHh1ZmhrY21nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNzM1MTEsImV4cCI6MjA5Njk0OTUxMX0.XendT9pBAcEJ7sHw7HFqctNpwtaBA-_BLVt1cvWYdvw"; // <--- CAMBIA ESTO POR TU CLAVE ANON REAL
-    
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-    // Parámetros que se sincronizarán con Supabase de manera automática
+    // Parámetros dinámicos desde Supabase
     let CONFIG_SISTEMA = {
       limite_cartones: 5,
       fecha_cierre: null,
@@ -103,15 +102,13 @@
     let listaQR = [];
     let ipPublica = "", geoLatitud = "", geoLongitud = "";
 
-    // Al cargar la página, se lee la configuración de Supabase y metadatos
     window.addEventListener('load', async () => {
-      // Captura de IP e hilos de localización
       fetch('https://api.ipify.org?format=json').then(res => res.json()).then(d => ipPublica = d.ip).catch(e => {});
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
       }
 
-      // Cargar la configuración remota en tiempo real
+      // El objeto _supabase viene cargado directamente desde tu conexion.js de forma oculta
       try {
         const { data, error } = await _supabase
           .from('configuracion')
@@ -125,19 +122,17 @@
         CONFIG_SISTEMA.fecha_cierre = new Date(data.fecha_cierre);
         CONFIG_SISTEMA.caracteres_qr = data.caracteres_qr;
 
-        // Mostrar información actual al usuario
         document.getElementById("infoConfig").innerText = 
-          `Configuración activa: Máximo ${CONFIG_SISTEMA.limite_cartones} cartones por cliente | Formato QR: @ + ${CONFIG_SISTEMA.caracteres_qr} caracteres.`;
+          `Configuración activa: Máximo ${CONFIG_SISTEMA.limite_cartones} cartones | Formato: @ + ${CONFIG_SISTEMA.caracteres_qr} dígitos.`;
 
-        // Validar si el sistema ya caducó por fecha/hora
         let ahora = new Date();
         if (ahora > CONFIG_SISTEMA.fecha_cierre) {
           bloquearSistemaPorFecha();
         }
 
       } catch (err) {
-        console.error("Error cargando configuración remota:", err);
-        document.getElementById("infoConfig").innerText = "Aviso: Usando configuración local por defecto.";
+        console.error("Error al leer configuración remota:", err);
+        document.getElementById("infoConfig").innerText = "Aviso: Ejecutando con parámetros por defecto.";
       }
     });
 
@@ -153,7 +148,7 @@
     }
 
     function procesarFormato(texto) {
-      let formato = CONFIG_SISTEMA.caracteres_qr; // Usa el valor extraído de la base de datos
+      let formato = CONFIG_SISTEMA.caracteres_qr;
       let pos = texto.indexOf("@");
       if (pos !== -1 && texto.length > pos + formato) {
         return texto.substring(pos+1, pos+1+formato);
@@ -196,6 +191,7 @@
       actualizarTabla();
     });
 
+    // TABLA MEJORADA: Conector visual del botón eliminar individual
     function actualizarTabla() {
       let tbody = document.querySelector("#tabla tbody");
       tbody.innerHTML = "";
@@ -204,29 +200,41 @@
       let direccionInput = document.getElementById("direccion").value.trim() || "---";
 
       if(listaQR.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
         actualizarContador();
         return;
       }
 
       listaQR.forEach((qr, index) => {
         let fila = document.createElement("tr");
-        fila.innerHTML = `<td>${index + 1}</td><td><strong>${qr}</strong></td><td>${ciudadInput} - ${direccionInput}</td>`;
+        fila.innerHTML = `
+          <td>${index + 1}</td>
+          <td><strong>${qr}</strong></td>
+          <td>${ciudadInput} - ${direccionInput}</td>
+          <td>
+            <button class="btn-eliminar" onclick="eliminarCarton(${index})">Eliminar</button>
+          </td>
+        `;
         tbody.appendChild(fila);
       });
       actualizarContador();
     }
 
+    // Función para sacar cartones repetidos o erróneos de la lista
+    function eliminarCarton(index) {
+      listaQR.splice(index, 1);
+      actualizarTabla();
+    }
+
     document.getElementById("ciudad").addEventListener("input", actualizarTabla);
     document.getElementById("direccion").addEventListener("input", actualizarTabla);
 
-    // PROCESO DE REGISTRO EN SEGUNDO PLANO
+    // GUARDADO MASIVO SEGURO
     async function enviarAlBackend() {
       let ahora = new Date();
-      // VALIDACIÓN DE FECHA LÍMITE INMEDIATA ANTES DE PROCESAR
       if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
         bloquearSistemaPorFecha();
-        alert("Lo sentimos, el tiempo de registro ha expirado de forma definitiva.");
+        alert("El tiempo de registro de cartones ha expirado de forma definitiva.");
         return;
       }
 
@@ -250,10 +258,9 @@
       let mainEl = document.getElementById("contenidoPrincipal");
       let btn = document.getElementById("btnRegistrar");
       mainEl.classList.add("loading");
-      btn.innerText = "Verificando reglas del sistema...";
+      btn.innerText = "Verificando cupos libres...";
 
       try {
-        // VALIDACIÓN DE CANTIDAD DE CARTONES POR CELULAR
         const { data: existentes, error: errConteo } = await _supabase
           .from('registros_bingo')
           .select('id')
@@ -261,9 +268,8 @@
 
         if (errConteo) throw errConteo;
 
-        // Validar dinámicamente según el límite que configuraste en Supabase
         if (existentes.length + listaQR.length > CONFIG_SISTEMA.limite_cartones) {
-          alert(`¡Cupo Completo! Este celular ya posee ${existentes.length} cartones en base de datos. Tu límite configurado es de máximo ${CONFIG_SISTEMA.limite_cartones}.`);
+          alert(`¡Cupo Excedido! Este celular ya registra ${existentes.length} cartones en el sistema. Tu límite actual es de ${CONFIG_SISTEMA.limite_cartones}.`);
           mainEl.classList.remove("loading");
           btn.innerText = "Registrar Cartones en el Sistema";
           return;
@@ -289,10 +295,10 @@
 
         if (errInsert) {
           if (errInsert.code === "23505") {
-            alert("Error: Uno de los cartones seleccionados ya fue registrado previamente en el sistema.");
+            alert("¡Atención!: Uno de los cartones que escaneaste ya fue registrado anteriormente en la base de datos por otra persona. Encuéntralo y usa el botón 'Eliminar' para quitarlo de tu lista.");
           } else { throw errInsert; }
         } else {
-          alert("¡Cartones guardados con éxito!");
+          alert("¡Todos tus cartones han sido registrados exitosamente!");
           listaQR = [];
           actualizarTabla();
           document.getElementById("nombre").value = "";
@@ -305,7 +311,7 @@
 
       } catch (err) {
         console.error(err);
-        alert("Ocurrió un inconveniente: " + err.message);
+        alert("Error de conexión: " + err.message);
       } finally {
         mainEl.classList.remove("loading");
         btn.innerText = "Registrar Cartones en el Sistema";
