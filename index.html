@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Cartones - TuBingo Pro (Alta Capacidad)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    :root {
+      --primary-color: #2ecc71;
+      --primary-hover: #27ae60;
+      --bg-color: #f5f7fb;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: 'Segoe UI', -apple-system, sans-serif; margin: 0; padding: 0; background: var(--bg-color); color: var(--text-color); }
+    header { background: var(--primary-color); color: white; padding: 20px 15px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    header h2 { margin: 0; font-size: 1.5rem; }
+    main { padding: 15px; max-width: 600px; margin: 0 auto; }
+    .card { background: var(--card-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .card h3 { margin-top: 0; margin-bottom: 15px; color: #2c3e50; border-bottom: 2px solid #ecf0f1; padding-bottom: 8px; font-size: 1.2rem; }
+    #reader { width: 100%; max-width: 100%; margin: auto; border-radius: 8px; overflow: hidden; background: #000; }
+    label { display: flex; align-items: center; margin: 12px 0; font-weight: 500; cursor: pointer; }
+    label input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; }
+    .input-group { margin-bottom: 15px; }
+    input[type="text"], input[type="email"], input[type="number"], input[type="file"] { 
+      width: 100%; padding: 12px; border: 1px solid #ccd1d9; border-radius: 6px; font-size: 16px; transition: border 0.3s;
+    }
+    input:focus { border-color: var(--primary-color); outline: none; }
+    button { 
+      width: 100%; padding: 14px; background: var(--primary-color); color: white; border: none; border-radius: 6px; 
+      font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px;
+    }
+    button:hover { background: var(--primary-hover); }
+    #resultadoQR { margin-top: 12px; padding: 10px; background: #eef2f7; border-radius: 6px; font-size: 0.95rem; text-align: center; word-break: break-all; }
+    #contador { font-size: 1.1rem; color: var(--primary-color); font-weight: bold; text-align: center; margin: 10px 0; }
+    .table-container { width: 100%; overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-top: 15px; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    th, td { padding: 12px 10px; text-align: center; border-bottom: 1px solid #edf2f7; }
+    th { background: var(--primary-color); color: white; font-weight: 600; }
+    .loading { opacity: 0.5; pointer-events: none; }
+  </style>
+  
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <header>
+    <h2>Registro de Cartones - TuBingo Pro</h2>
+  </header>
+
+  <main id="contenidoPrincipal">
+    <div class="card">
+      <h3>Escanear Código QR</h3>
+      <label><input type="checkbox" id="leerTodos" checked> Permitir múltiples cartones</label>
+      
+      <div id="reader"></div>
+      <div id="resultadoQR">Esperando acción o escaneo...</div>
+      <div id="contador">Cartones en lista: 0</div>
+      
+      <div class="input-group" style="margin-top:15px;">
+        <input type="file" id="fileInput" accept="image/*" multiple>
+      </div>
+
+      <div class="input-group">
+        <input type="number" id="formato" value="6" placeholder="Caracteres después de @">
+      </div>
+    </div>
+
+    <div class="card formulario">
+      <h3>Datos del Participante</h3>
+      <div class="input-group"><input type="text" id="nombre" placeholder="Nombre Completo" required></div>
+      <div class="input-group"><input type="text" id="celular" placeholder="Número de Celular" required></div>
+      <div class="input-group"><input type="email" id="correo" placeholder="Correo Electrónico" required></div>
+      <div class="input-group"><input type="text" id="vendedor" placeholder="Nombre del Vendedor (Opcional)"></div>
+      
+      <button id="btnRegistrar" onclick="enviarAlBackend()">Registrar Cartones</button>
+    </div>
+
+    <div class="card">
+      <h3>Cartones Cargados</h3>
+      <div class="table-container">
+        <table id="tabla">
+          <thead><tr><th>#</th><th>Serie (Cartón)</th></tr></thead>
+          <tbody><tr><td colspan="2" style="color:#999;">Ningún cartón escaneado aún</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Configuración de las credenciales de Supabase
+    // OBTENLAS EN: Project Settings > API en tu panel de Supabase
+    const SUPABASE_URL = "https://mfwkbomubeydxufhkcmg.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1md2tib211YmV5ZHh1ZmhrY21nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNzM1MTEsImV4cCI6MjA5Njk0OTUxMX0.XendT9pBAcEJ7sHw7HFqctNpwtaBA-_BLVt1cvWYdvw";
+    
+    // Inicializar el cliente ultra-rápido de Supabase
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const LIMITE_MAXIMO_TOTAL = 5; // Límite configurable de cartones por número telefónico
+    let listaQR = [];
+    let ipPublica = "", geoLatitud = "", geoLongitud = "";
+
+    window.addEventListener('load', () => {
+      fetch('https://api.ipify.org?format=json').then(res => res.json()).then(d => ipPublica = d.ip).catch(e => {});
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
+      }
+    });
+
+    function actualizarContador() { document.getElementById("contador").innerText = "Cartones en lista: " + listaQR.length; }
+
+    function procesarFormato(texto) {
+      let formato = parseInt(document.getElementById("formato").value);
+      if (!isNaN(formato)) {
+        let pos = texto.indexOf("@");
+        if (pos !== -1 && texto.length > pos + formato) return texto.substring(pos+1, pos+1+formato);
+      }
+      return texto;
+    }
+
+    function onScanSuccess(decodedText) {
+      let procesado = procesarFormato(decodedText);
+      if (!listaQR.includes(procesado)) {
+        if (document.getElementById("leerTodos").checked) { listaQR.push(procesado); } else { listaQR = [procesado]; }
+        document.getElementById("resultadoQR").innerText = "¡Leído!: " + procesado;
+        actualizarTabla();
+      }
+    }
+
+    let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+    scanner.render(onScanSuccess, () => {});
+
+    document.getElementById("fileInput").addEventListener("change", async (e) => {
+      for (let file of e.target.files) {
+        try {
+          const qrCode = await Html5Qrcode.scanFile(file, true);
+          let procesado = procesarFormato(qrCode);
+          if (!listaQR.includes(procesado)) listaQR.push(procesado);
+        } catch (err) {}
+      }
+      actualizarTabla();
+    });
+
+    function actualizarTabla() {
+      let tbody = document.querySelector("#tabla tbody");
+      tbody.innerHTML = "";
+      if(listaQR.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="2" style="color:#999;">Ningún cartón escaneado aún</td></tr>`;
+        actualizarContador(); return;
+      }
+      listaQR.forEach((qr, idx) => {
+        let fila = document.createElement("tr");
+        fila.innerHTML = `<td>${idx + 1}</td><td><strong>${qr}</strong></td>`;
+        tbody.appendChild(fila);
+      });
+      actualizarContador();
+    }
+
+    // ENVÍO MASIVO DIRECTO A SUPABASE
+    async function enviarAlBackend() {
+      let nombre = document.getElementById("nombre").value.trim();
+      let celular = document.getElementById("celular").value.trim();
+      let correo = document.getElementById("correo").value.trim();
+      let vendedor = document.getElementById("vendedor").value.trim() || "WEB";
+
+      if (!nombre || !celular || !correo) { alert("Por favor llene los campos obligatorios."); return; }
+      if (listaQR.length === 0) { alert("Escanee al menos un QR."); return; }
+
+      let mainEl = document.getElementById("contenidoPrincipal");
+      let btn = document.getElementById("btnRegistrar");
+      mainEl.classList.add("loading");
+      btn.innerText = "Validando cupos en tiempo real...";
+
+      try {
+        // 1. Validar cuántos cartones ya tiene este número telefónico en Supabase (tarda milisegundos)
+        const { data: registrosExistentes, error: errorConteo } = await _supabase
+          .from('registros_bingo')
+          .select('id')
+          .eq('telefono', celular);
+
+        if (errorConteo) throw errorConteo;
+
+        let totalPrendidos = registrosExistentes.length;
+        if (totalPrendidos + listaQR.length > LIMITE_MAXIMO_TOTAL) {
+          alert(`Cupo excedido. Este celular ya cuenta con ${totalPrendidos} cartones registrados. Límite máximo: ${LIMITE_MAXIMO_TOTAL}.`);
+          mainEl.classList.remove("loading");
+          btn.innerText = "Registrar Cartones";
+          return;
+        }
+
+        // 2. Preparar el lote de registros distribuidos de forma masiva
+        let filasAInsertar = listaQR.map(serieCarton => ({
+          carton: serieCarton,
+          nombre: nombre,
+          correo: correo,
+          telefono: celular,
+          vendedor: vendedor,
+          ip_publica: ipPublica,
+          gps_latitud: geoLatitud ? geoLatitud.toString() : "",
+          gps_longitud: geoLongitud ? geoLongitud.toString() : ""
+        }));
+
+        // 3. Insertar todo el bloque de un solo golpe
+        const { error: errorInsercion } = await _supabase
+          .from('registros_bingo')
+          .insert(filasAInsertar);
+
+        if (errorInsercion) {
+          // Si arroja el error 23505 significa que alguien intentó registrar un cartón que ya fue guardado por otra persona
+          if (errorInsercion.code === "23505") {
+            alert("Error: Uno de los cartones que intentas registrar ya fue escaneado y registrado previamente por otro usuario.");
+          } else {
+            throw errorInsercion;
+          }
+        } else {
+          alert("¡Registrado exitosamente en la base de datos de alta velocidad!");
+          // Resetear formulario
+          listaQR = [];
+          actualizarTabla();
+          document.getElementById("nombre").value = "";
+          document.getElementById("celular").value = "";
+          document.getElementById("correo").value = "";
+          document.getElementById("vendedor").value = "";
+        }
+
+      } catch (err) {
+        console.error(err);
+        alert("Ocurrió un error en el proceso de alta velocidad: " + err.message);
+      } finally {
+        mainEl.classList.remove("loading");
+        btn.innerText = "Registrar Cartones";
+      }
+    }
+  </script>
+</body>
+</html>
