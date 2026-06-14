@@ -2,398 +2,307 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Registro de Cartones - TuBingo Pro</title>
+  <title>Panel de Administración - TuBingo Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f9f9f9; color: #333; }
-    header { background: #4CAF50; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    main { padding: 20px; max-width: 600px; margin: auto; }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f1f2f6; color: #2d3436; }
+    header { background: #2c3e50; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    header h2 { margin: 0; font-size: 1.5rem; }
+    .header-logo { max-height: 60px; max-width: 150px; object-fit: contain; border-radius: 4px; background: rgba(255,255,255,0.1); padding: 4px; }
     
-    /* Lector QR con fondo claro */
-    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; }
-    #reader video { width: 100% !important; object-fit: cover; }
+    main { padding: 20px; max-width: 950px; margin: auto; }
     
-    .formulario { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .formulario h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
-    .formulario input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-    .formulario input:focus { border-color: #4CAF50; outline: none; }
+    .login-container { max-width: 400px; margin: 100px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+    .login-container input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
     
-    .banner-alerta { background: #ff7675; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; }
+    .dashboard { display: none; }
+    .tarjetas-grid { display: grid; gap: 20px; margin-bottom: 25px; }
+    .tarjeta { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; box-sizing: border-box; }
+    .tarjeta h3 { margin: 0; color: #7f8c8d; font-size: 0.9rem; text-transform: uppercase; }
+    .tarjeta p { margin: 10px 0 0 0; font-size: 2rem; font-weight: bold; color: #2c3e50; }
+
+    .seccion { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 25px; }
+    .seccion h3 { margin-top: 0; border-bottom: 2px solid #f1f2f6; padding-bottom: 10px; color: #34495e; }
     
-    button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
-    button:hover { background: #45a049; }
-    button:disabled { background: #cccccc; cursor: not-allowed; }
+    .table-container { width: 100%; overflow-x: auto; max-height: 400px; overflow-y: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+    th, td { border-bottom: 1px solid #ddd; padding: 12px; text-align: left; }
+    th { background: #f8f9fa; color: #7f8c8d; position: sticky; top: 0; z-index: 5; }
     
-    .table-container { width: 100%; overflow-x: auto; margin-top: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-    th, td { border-bottom: 1px solid #ddd; padding: 12px 10px; text-align: center; }
-    th { background: #4CAF50; color: white; }
-    label { display: flex; align-items: center; margin: 10px 0; font-weight: 500; cursor: pointer; }
-    label input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; }
+    button { width: 100%; padding: 14px; background: #2ecc71; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #27ae60; }
     
-    /* Animación y transición de color para el cuadro QR */
-    #resultadoQR { margin-top: 15px; padding: 12px; background: #eef2f7; border-radius: 6px; text-align: center; font-size: 0.95rem; font-weight: bold; transition: all 0.3s ease; border: 1px solid transparent; }
-    .scan-exito { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; transform: scale(1.02); }
+    .btn-accion { padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; display: inline-block; margin-right: 5px; font-weight: normal; }
+    .btn-modificar { background: #f1c40f; color: #2c3e50; }
+    .btn-borrar-item { background: #ff7675; color: white; }
+
+    .busqueda-input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+    .config-flex { display: flex; gap: 15px; align-items: center; margin-top: 10px; }
+    .config-flex input { flex: 1; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; font-weight: bold; }
     
-    /* CAMBIO REQUERIDO: TEXTO DE CONTADOR MÁS GRANDE Y RELLENO */
-    #contador { margin-top: 15px; font-size: 24px; color: #27ae60; font-weight: 800; text-align: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px dashed #4CAF50; letter-spacing: 0.5px; }
-    
+    .btn-azul { background: #3498db; width: auto; padding: 11px 25px; }
+    .btn-azul:hover { background: #2980b9; }
+    .btn-descarga { background: #2ecc71; width: auto; padding: 12px 22px; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-regresar { background: #7f8c8d; width: auto; padding: 12px 22px; font-size: 15px; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-flex; align-items: center; }
+
+    .btn-peligro { background: #ff7675; margin-top: 15px; }
     .loading { opacity: 0.5; pointer-events: none; }
-    
-    /* Botón rojo de eliminar cartón */
-    .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; color: white; border: none; cursor: pointer; }
-    .btn-eliminar:hover { background: #e84393; }
-    
-    /* Etiqueta de aviso para cartones duplicados */
-    .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
-    .fila-duplicada { background-color: #ffeaa7; } /* Resalta levemente la fila que tiene problemas */
+
+    /* Estilos para el selector de diseño */
+    .diseno-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 15px; }
+    .color-picker-wrapper { display: flex; align-items: center; gap: 10px; }
+    .color-picker-wrapper input[type="color"] { width: 50px; height: 40px; border: none; cursor: pointer; border-radius: 4px; }
   </style>
   
-  <script src="https://unpkg.com/html5-qrcode"></script>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-  
-  <script src="conexion.js"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="conexion.js" defer></script>
 </head>
 <body>
-  <header>
-    <h2>Registro de Cartones - TuBingo Pro</h2>
-  </header>
-  <main id="contenidoPrincipal">
-    
-    <div id="bannerCierre" class="banner-alerta">⚠️ EL REGISTRO DE CARTONES YA ESTÁ CERRADO</div>
 
-    <div class="formulario" style="margin-top:0;">
-      <h3>Escanear Código QR</h3>
-      <label><input type="checkbox" id="leerTodos" checked> Permitir múltiples cartones</label>
-      <div id="reader"></div>
-      <div id="resultadoQR">Esperando acción o escaneo...</div>
-      
-      <!-- CONTADOR MODIFICADO (MÁS GRANDE) -->
-      <div id="contador">Cartones en lista: 0</div>
-    </div>
+  <div id="vistaLogin" class="login-container">
+    <h2 style="color:#2c3e50; margin-top:0;">Acceso Administrativo</h2>
+    <p style="color:#7f8c8d; font-size:0.9rem;">Ingrese sus credenciales de TuBingo Pro</p>
+    <input type="text" id="usuario" placeholder="Usuario Administrador">
+    <input type="password" id="clave" placeholder="Contraseña de Seguridad">
+    <button id="btnLogin" onclick="validarAcceso()">Ingresar al Panel</button>
+  </div>
 
-    <div class="formulario">
-      <h3>Datos personales</h3>
-      <input type="text" id="nombre" placeholder="Nombre Completo" required>
-      <input type="text" id="celular" placeholder="Número de Celular" required>
-      <input type="text" id="correo" placeholder="Correo Electrónico" required>
-      <input type="text" id="ciudad" placeholder="Ciudad (Ej: Guayaquil)" required>
-      <input type="text" id="direccion" placeholder="Dirección Exacta (Ej: Isla Trinitaria solar 45)" required>
-      <input type="text" id="vendedor" placeholder="Nombre del Vendedor (Opcional)">
+  <div id="vistaDashboard" class="dashboard">
+    <header id="panelHeader">
+      <h2>Panel General de Control - TuBingo Pro</h2>
+      <img id="imgLogoPanel" class="header-logo" src="https://via.placeholder.com/150" alt="Logo">
+    </header>
+    <main id="mainPanel">
       
-      <!-- CAMPO REQUERIDO: VALIDACIÓN DEL CÓDIGO DEL CANAL -->
-      <div style="margin-top: 15px; border-top: 1px solid #edf2f7; padding-top: 10px;">
-        <label for="codigoCanal" style="font-weight: bold; color: #e67e22;">🔑 Código Secreto del Canal de WhatsApp:</label>
-        <input type="text" id="codigoCanal" placeholder="Escribe la clave fijada en nuestro canal" required style="border: 2px solid #e67e22; text-transform: uppercase; font-weight: bold;">
+      <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+        <a href="index.html" class="btn-regresar">⬅️ Ir al Formulario de Registro</a>
+        <button id="btnExportarExcel" class="btn-descarga" onclick="descargarBaseDatosExcel()">🟢 Descargar Excel (Formato Oficial)</button>
       </div>
 
-      <button id="btnRegistrar" onclick="enviarAlBackend()">Registrar Cartones en el Sistema</button>
-    </div>
+      <div class="tarjetas-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="tarjeta">
+          <h3>Total Cartones</h3>
+          <p id="txtTotalCartones" style="color: #2ecc71;">0</p>
+        </div>
+        <div class="tarjeta">
+          <h3>Celulares Únicos</h3>
+          <p id="txtTotalCelulares" style="color: #3498db;">0</p>
+        </div>
+        <div class="tarjeta">
+          <h3>Cliente Top</h3>
+          <p id="txtClienteTop" style="font-size: 1.1rem; padding-top: 10px; color: #9b59b6;">Cargando...</p>
+        </div>
+        <div class="tarjeta">
+          <h3>Sectores Activos</h3>
+          <p id="txtTotalSectores">0</p>
+        </div>
+      </div>
 
-    <div class="table-container">
-      <table id="tabla">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Serie (Cartón)</th>
-            <th>Ubicación</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
+      <!-- NUEVA SECCIÓN: PERSONALIZACIÓN DE DISEÑO Y MARCA -->
+      <div class="seccion" style="border-left: 5px solid #9b59b6;">
+        <h3 style="color: #8e44ad;">🎨 Paleta de Diseño y Marca Personalizada</h3>
+        <p style="font-size:0.85rem; color:#7f8c8d; margin-bottom: 15px;">Cambia la apariencia del Registro de Clientes y de este Panel de Control en tiempo real de forma centralizada.</p>
+        
+        <div style="margin-bottom: 15px;">
+          <label style="font-weight: bold; font-size: 0.9rem; display:block; margin-bottom:5px;">Enlace (URL) de tu Logotipo:</label>
+          <input type="text" id="inputLogoUrl" class="busqueda-input" style="margin-bottom:0;" placeholder="https://tuservidor.com/imagen.png">
+        </div>
+
+        <div class="diseno-grid">
+          <div class="color-picker-wrapper">
+            <input type="color" id="colorRegistro" value="#2ecc71">
+            <div>
+              <strong style="font-size:0.9rem; display:block;">Color Botones Registro</strong>
+              <small style="color:#7f8c8d;">Formulario Público</small>
+            </div>
+          </div>
+          <div class="color-picker-wrapper">
+            <input type="color" id="colorPanel" value="#2c3e50">
+            <div>
+              <strong style="font-size:0.9rem; display:block;">Color Cabecera Panel</strong>
+              <small style="color:#7f8c8d;">Este Administrador</small>
+            </div>
+          </div>
+          <div style="text-align: right; display: flex; align-items: center; justify-content: flex-end;">
+            <button class="btn-azul" style="background:#8e44ad; width:100%;" onclick="guardarDisenoPersonalizado()">💾 Guardar Imagen y Colores</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="seccion" style="border-left: 5px solid #2ecc71;">
+        <h3 style="color: #27ae60; margin-bottom: 5px;">🔑 Código Activo del Canal de WhatsApp</h3>
+        <div class="config-flex">
+          <input type="text" id="inputCodigoAdmin" placeholder="Cargando código...">
+          <button class="btn-azul" onclick="actualizarCodigoCanal()">Actualizar Código</button>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <h3>Resumen General de Clientes</h3>
+        <div class="table-container">
+          <table id="tablaResumenClientes">
+            <thead>
+              <tr><th>Nombre del Cliente</th><th style="text-align: center;">Cartones</th><th style="text-align: center;">Celulares Únicos</th></tr>
+            </thead>
+            <tbody><tr><td colspan="3" style="text-align:center;color:#999;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="seccion">
+        <h3>Gestión Individual de Cartones</h3>
+        <input type="text" id="inputBuscar" class="busqueda-input" oninput="filtrarCartones()" placeholder="🔍 Buscar por cliente, celular o serie de cartón...">
+        <div class="table-container">
+          <table id="tablaIndividualCartones">
+            <thead>
+              <tr><th>#</th><th>Serie (Cartón)</th><th>Cliente</th><th>Celular</th><th>Acciones</th></tr>
+            </thead>
+            <tbody><tr><td colspan="5" style="text-align:center;color:#999;">Cargando...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="seccion" style="border: 1px solid #ff7675;">
+        <h3 style="color: #d63031;">Zona de Peligro (Cierre de Evento)</h3>
+        <button class="btn-peligro" onclick="procesarLimpiezaAbsoluta()">VACIAR TABLA DE BINGO (BORRADO TOTAL)</button>
+      </div>
+
+    </main>
+  </div>
 
   <script>
-    // Parámetros dinámicos desde Supabase
-    let CONFIG_SISTEMA = {
-      limite_cartones: 5,
-      fecha_cierre: null,
-      caracteres_qr: 6
-    };
+    let cacheRegistros = []; 
 
-    let listaQR = [];
-    let cartonesDuplicados = []; 
-    let ipPublica = "", geoLatitud = "", geoLongitud = "";
-
-    // FUNCIÓN PARA REPRODUCIR SONIDO "BEEP" NATIVO DEL NAVEGADOR
-    function emitirSonidoExito() {
+    async function validarAcceso() {
+      let u = document.getElementById("usuario").value.trim();
+      let c = document.getElementById("clave").value.trim();
+      if (!u || !c) { alert("Rellene los campos."); return; }
+      
       try {
-        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        let oscillator = audioCtx.createOscillator();
-        let gainNode = audioCtx.createGain();
-
-        oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // Tono alto agradable (Nota A5)
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); // Volumen controlado
-
-        oscillator.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
-
-        oscillator.start();
-        oscillator.stop(audioCtx.currentTime + 0.12); // Duración muy corta de 120 milisegundos
-      } catch (e) {
-        console.error("El navegador bloqueó o no soporta AudioContext aún:", e);
-      }
-    }
-
-    window.addEventListener('load', async () => {
-      fetch('https://api.ipify.org?format=json').then(res => res.json()).then(d => ipPublica = d.ip).catch(e => {});
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
-      }
-
-      try {
-        const { data, error } = await _supabase
-          .from('configuracion')
-          .select('*')
-          .eq('id', 1)
-          .single();
-
+        const { data: admin, error } = await _supabase.from('usuarios_admin').select('*').eq('usuario', u).eq('clave', c).maybeSingle();
         if (error) throw error;
+        if (!admin || !admin.activo) { alert("Acceso incorrecto."); return; }
 
-        CONFIG_SISTEMA.limite_cartones = data.limite_cartones;
-        CONFIG_SISTEMA.fecha_cierre = new Date(data.fecha_cierre);
-        CONFIG_SISTEMA.caracteres_qr = data.caracteres_qr;
-
-        let ahora = new Date();
-        if (ahora > CONFIG_SISTEMA.fecha_cierre) {
-          bloquearSistemaPorFecha();
-        }
-
-      } catch (err) {
-        console.error("Error al leer configuración remota:", err);
-      }
-    });
-
-    function bloquearSistemaPorFecha() {
-      document.getElementById("bannerCierre").style.display = "block";
-      document.getElementById("btnRegistrar").disabled = true;
-      document.getElementById("btnRegistrar").innerText = "Registro Cerrado por Fecha Límite";
-      document.getElementById("contenidoPrincipal").classList.add("loading");
-    }
-
-    function actualizarContador() {
-      document.getElementById("contador").innerText = "Cartones en lista: " + listaQR.length;
-    }
-
-    function procesarFormato(texto) {
-      let formato = CONFIG_SISTEMA.caracteres_qr;
-      let pos = texto.indexOf("@");
-      if (pos !== -1 && texto.length > pos + formato) {
-        return texto.substring(pos+1, pos+1+formato);
-      }
-      return texto;
-    }
-
-    function onScanSuccess(decodedText) {
-      let ahora = new Date();
-      if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
-        bloquearSistemaPorFecha();
-        return;
-      }
-
-      let procesado = procesarFormato(decodedText);
-      
-      // SI EL CARTÓN NO ESTÁ REPETIDO EN LA LISTA ACTUAL, GENERAR ALERTAS DE LECTURA
-      if (!listaQR.includes(procesado)) {
+        document.getElementById("vistaLogin").style.display = "none";
+        document.getElementById("vistaDashboard").style.display = "block";
         
-        // INTERFAZ ACTIVA: Emitir sonido y pintar cuadro de verde
-        emitirSonidoExito();
-        let contenedorResultado = document.getElementById("resultadoQR");
-        contenedorResultado.innerText = "¡Leído con éxito!: " + procesado;
-        contenedorResultado.classList.add("scan-exito");
-        
-        // Quitar el color verde después de 1 segundo (1000 milisegundos)
-        setTimeout(() => {
-          contenedorResultado.classList.remove("scan-exito");
-        }, 1000);
+        cargarMetricasDelSistema();
+        cargarCodigoCanalActual();
+        cargarDisenoEnPanel(); // Carga visual del logo/color guardado
 
-        if (document.getElementById("leerTodos").checked) {
-          listaQR.push(procesado);
-        } else {
-          listaQR = [procesado];
-        }
-        actualizarTabla();
-      } else {
-        document.getElementById("resultadoQR").innerText = "El código " + procesado + " ya lo escaneaste abajo.";
-      }
+      } catch (err) { alert(err.message); }
     }
 
-    let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
-    scanner.render(onScanSuccess, (err) => {});
-
-    function actualizarTabla() {
-      let tbody = document.querySelector("#tabla tbody");
-      tbody.innerHTML = "";
-      
-      let ciudadInput = document.getElementById("ciudad").value.trim() || "---";
-      let direccionInput = document.getElementById("direccion").value.trim() || "---";
-
-      if(listaQR.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
-        actualizarContador();
-        return;
-      }
-
-      listaQR.forEach((qr, index) => {
-        let fila = document.createElement("tr");
-        
-        let esDuplicado = cartonesDuplicados.includes(qr);
-        if(esDuplicado) {
-          fila.classList.add("fila-duplicada");
-        }
-
-        fila.innerHTML = `
-          <td>${index + 1}</td>
-          <td><strong>${qr}</strong></td>
-          <td>${ciudadInput} - ${direccionInput}</td>
-          <td>
-            <button class="btn-eliminar" onclick="eliminarCarton(${index})">Eliminar</button>
-            ${esDuplicado ? '<span class="alerta-duplicado">⚠️ DUPLICADO</span>' : ''}
-          </td>
-        `;
-        tbody.appendChild(fila);
-      });
-      actualizarContador();
-    }
-
-    function eliminarCarton(index) {
-      let qrRemovido = listaQR[index];
-      listaQR.splice(index, 1);
-      cartonesDuplicados = cartonesDuplicados.filter(item => item !== qrRemovido);
-      actualizarTabla();
-    }
-
-    document.getElementById("ciudad").addEventListener("input", actualizarTabla);
-    document.getElementById("direccion").addEventListener("input", actualizarTabla);
-
-    // ENVÍO DE DATOS Y NUEVA VALIDACIÓN DEL CÓDIGO SECRETO DEL CANAL
-    async function enviarAlBackend() {
-      let ahora = new Date();
-      if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
-        bloquearSistemaPorFecha();
-        alert("El tiempo de registro de cartones ha expirado de forma definitiva.");
-        return;
-      }
-
-      let nombre = document.getElementById("nombre").value.trim();
-      let celular = document.getElementById("celular").value.trim();
-      let correo = document.getElementById("correo").value.trim();
-      let ciudad = document.getElementById("ciudad").value.trim();
-      let direccion = document.getElementById("direccion").value.trim();
-      let vendedor = document.getElementById("vendedor").value.trim() || "WEB";
-      
-      // Obtener clave ingresada por el cliente
-      let codigoIngresado = document.getElementById("codigoCanal").value.trim().toUpperCase();
-
-      if (!nombre || !celular || !correo || !ciudad || !direccion || !codigoIngresado) {
-        alert("Por favor complete todos los campos requeridos, incluyendo el Código Secreto del Canal.");
-        return;
-      }
-
-      if (listaQR.length === 0) {
-        alert("Escanee al menos un cartón QR.");
-        return;
-      }
-
-      let mainEl = document.getElementById("contenidoPrincipal");
-      let btn = document.getElementById("btnRegistrar");
-      mainEl.classList.add("loading");
-      btn.innerText = "Verificando códigos...";
-
-      cartonesDuplicados = [];
-
+    async function cargarDisenoEnPanel() {
       try {
-        // 1. NUEVA ACCIÓN: VALIDAR EL CÓDIGO SECRETO DESDE LA BASE DE DATOS CONTRA LO QUE PUSO EL CLIENTE
-        const { data: configCanal, error: errConfig } = await _supabase
-          .from('configuracion_sistema')
-          .select('valor')
-          .eq('clave', 'codigo_canal_whatsapp')
-          .maybeSingle();
+        const { data } = await _supabase.from('configuracion_sistema').select('clave, valor');
+        if(data) {
+          let logo = data.find(x => x.clave === 'diseno_logo_url')?.valor;
+          let colPanel = data.find(x => x.clave === 'diseno_color_panel')?.valor;
+          let colReg = data.find(x => x.clave === 'diseno_color_principal')?.valor;
 
-        if (errConfig) throw errConfig;
+          if(logo) { document.getElementById("imgLogoPanel").src = logo; document.getElementById("inputLogoUrl").value = logo; }
+          if(colPanel) { document.getElementById("panelHeader").style.background = colPanel; document.getElementById("colorPanel").value = colPanel; }
+          if(colReg) { document.getElementById("colorText").value = colReg; }
+        }
+      } catch(e){}
+    }
 
-        if (!configCanal || codigoIngresado !== configCanal.valor.toUpperCase()) {
-          alert("❌ El Código Secreto del Canal de WhatsApp es incorrecto o ha caducado. Por favor, revise el mensaje fijado en nuestro canal oficial para obtener la clave válida.");
-          mainEl.classList.remove("loading");
-          btn.innerText = "Registrar Cartones en el Sistema";
-          return; // Frena todo, evita el guardado
+    async function guardarDisenoPersonalizado() {
+      let logoUrl = document.getElementById("inputLogoUrl").value.trim();
+      let colReg = document.getElementById("colorRegistro").value;
+      let colPan = document.getElementById("colorPanel").value;
+
+      document.getElementById("mainPanel").classList.add("loading");
+      try {
+        await _supabase.from('configuracion_sistema').upsert({ clave: 'diseno_logo_url', valor: logoUrl });
+        await _supabase.from('configuracion_sistema').upsert({ clave: 'diseno_color_principal', valor: colReg });
+        await _supabase.from('configuracion_sistema').upsert({ clave: 'diseno_color_panel', valor: colPan });
+        
+        document.getElementById("panelHeader").style.background = colPan;
+        document.getElementById("imgLogoPanel").src = logoUrl;
+        alert("¡Diseño de marca actualizado e implementado globalmente!");
+      } catch(err) { alert("Error: "+err.message); }
+      finally { document.getElementById("mainPanel").classList.remove("loading"); }
+    }
+
+    async function cargarCodigoCanalActual() {
+      const { data } = await _supabase.from('configuracion_sistema').select('valor').eq('clave', 'codigo_canal_whatsapp').maybeSingle();
+      if (data) document.getElementById("inputCodigoAdmin").value = data.valor;
+    }
+
+    async function actualizarCodigoCanal() {
+      let nuevo = document.getElementById("inputCodigoAdmin").value.trim().toUpperCase();
+      if (!nuevo) return;
+      await _supabase.from('configuracion_sistema').upsert({ clave: 'codigo_canal_whatsapp', valor: nuevo });
+      alert("Código de canal actualizado.");
+    }
+
+    async function cargarMetricasDelSistema() {
+      try {
+        const { data: todos } = await _supabase.from('registros_bingo').select('id, carton, nombre, telefono').order('id', { ascending: false });
+        cacheRegistros = todos || [];
+        document.getElementById("txtTotalCartones").innerText = cacheRegistros.length;
+        
+        let celulares = new Set();
+        let nombres = {};
+        cacheRegistros.forEach(r => {
+          if(r.telefono) celulares.add(r.telefono.trim());
+          let n = r.nombre ? r.nombre.trim().toUpperCase() : "ANÓNIMO";
+          nombres[n] = (nombres[n] || 0) + 1;
+        });
+        document.getElementById("txtTotalCelulares").innerText = celulares.size;
+        
+        renderizarTablaIndividual(cacheRegistros);
+        
+        let tbodyRes = document.querySelector("#tablaResumenClientes tbody");
+        tbodyRes.innerHTML = "";
+        for(let key in nombres) {
+          tbodyRes.innerHTML += `<tr><td><strong>${key}</strong></td><td style="text-align:center;">${nombres[key]}</td><td style="text-align:center;">-</td></tr>`;
         }
 
-        // 2. Validar límite de cartones permitidos en la cuenta por teléfono
-        const { data: existentes, error: errConteo } = await _supabase
-          .from('registros_bingo')
-          .select('id')
-          .eq('telefono', celular);
-
-        if (errConteo) throw errConteo;
-
-        if (existentes.length + listaQR.length > CONFIG_SISTEMA.limite_cartones) {
-          alert(`¡Cupo Excedido! Este celular ya registra ${existentes.length} cartones. Tu límite actual es de máximo ${CONFIG_SISTEMA.limite_cartones}.`);
-          mainEl.classList.remove("loading");
-          btn.innerText = "Registrar Cartones en el Sistema";
-          return;
+        const { data: sect } = await _supabase.rpc('obtener_estadisticas_sectors');
+        let tbodyS = document.querySelector("#tablaSectores tbody");
+        if(tbodyS && sect) {
+          tbodyS.innerHTML = "";
+          sect.forEach(s => { tbodyS.innerHTML += `<tr><td>${s.sector}</td><td style="text-align:right;">${s.total}</td></tr>` });
         }
+      } catch(e){}
+    }
 
-        // 3. COMPROBACIÓN INDIVIDUAL EN TIEMPO REAL PARA BUSCAR DUPLICADOS
-        const { data: yaRegistrados, error: errValidacion } = await _supabase
-          .from('registros_bingo')
-          .select('carton')
-          .in('carton', listaQR);
+    function renderizarTablaIndividual(datos) {
+      let tbody = document.querySelector("#tablaIndividualCartones tbody");
+      tbody.innerHTML = "";
+      datos.forEach((r, idx) => {
+        tbody.innerHTML += `<tr><td>${idx+1}</td><td><mark>${r.carton}</mark></td><td>${r.nombre}</td><td>${r.telefono}</td><td><button class="btn-accion btn-borrar-item" onclick="eliminar(${r.id})">Borrar</button></td></tr>`;
+      });
+    }
 
-        if (errValidacion) throw errValidacion;
+    function filtrarCartones() {
+      let txt = document.getElementById("inputBuscar").value.toLowerCase();
+      let f = cacheRegistros.filter(r => r.nombre.toLowerCase().includes(txt) || r.carton.toLowerCase().includes(txt) || r.telefono.includes(txt));
+      renderizarTablaIndividual(f);
+    }
 
-        if (yaRegistrados && yaRegistrados.length > 0) {
-          cartonesDuplicados = yaRegistrados.map(row => row.carton);
-          actualizarTabla();
-          alert("¡Atención! Se detectaron cartones que ya han sido registrados previamente por otro usuario. Se han marcado en la lista. Bórralos usando el botón de 'Eliminar' para poder procesar el resto.");
-          mainEl.classList.remove("loading");
-          btn.innerText = "Registrar Cartones en el Sistema";
-          return;
-        }
+    async function descargarBaseDatosExcel() {
+      try {
+        const { data } = await _supabase.from('registros_bingo').select('carton, nombre, ciudad, correo, telefono').order('id', { ascending: true });
+        if (!data || data.length === 0) return alert("Sin datos.");
+        
+        const rows = data.map(r => ({ "CARTON": r.carton, "NOMBRES": r.nombre, "UNO_PARTICIPA": 1, "CIUDAD": r.ciudad, "CORREO": r.correo, "TELEFONO": r.telefono }));
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+        XLSX.utils.book_append_sheet(wb, ws, "CARTONES");
+        XLSX.writeFile(wb, `registros_tubingo_pro.xlsx`);
+      } catch(e){}
+    }
 
-        // 4. Proceder a guardar el lote entero si todo es legal
-        let ubicacionCompleta = `${ciudad} - ${direccion}`;
-        let filasAInsertar = listaQR.map(serie => ({
-          carton: serie,
-          nombre: nombre,
-          correo: correo,
-          telefono: celular,
-          ciudad: ubicacionCompleta,
-          vendedor: vendedor,
-          ip_publica: ipPublica,
-          gps_latitud: geoLatitud ? geoLatitud.toString() : "",
-          gps_longitud: geoLongitud ? geoLongitud.toString() : ""
-        }));
-
-        const { error: errInsert } = await _supabase
-          .from('registros_bingo')
-          .insert(filasAInsertar);
-
-        if (errInsert) throw errInsert;
-
-        // ÉXITO TOTAL
-        alert("¡Todos tus cartones han sido registrados exitosamente!");
-        listaQR = [];
-        actualizarTabla();
-        document.getElementById("nombre").value = "";
-        document.getElementById("celular").value = "";
-        document.getElementById("correo").value = "";
-        document.getElementById("ciudad").value = "";
-        document.getElementById("direccion").value = "";
-        document.getElementById("vendedor").value = "";
-        document.getElementById("codigoCanal").value = "";
-
-      } catch (err) {
-        console.error(err);
-        alert("Error de procesamiento: " + err.message);
-      } finally {
-        mainEl.classList.remove("loading");
-        btn.innerText = "Registrar Cartones en el Sistema";
+    async function procesarLimpiezaAbsoluta() {
+      if(confirm("¿Seguro de vaciar todo?") && prompt("Escriba BORRAR") === "BORRAR") {
+        await _supabase.rpc('vaciar_tabla_bingo');
+        alert("Limpiado.");
+        cargarMetricasDelSistema();
       }
     }
   </script>
