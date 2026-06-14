@@ -5,108 +5,368 @@
   <title>Registro de Cartones - TuBingo Pro</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f5f6fa; margin:0; padding:0; text-align: center; color: #2c3e50; }
-    .container { max-width: 480px; margin: 30px auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f9f9f9; color: #333; }
     
-    /* Logo Dinámico Secreto */
-    .logo-click { max-width: 130px; cursor: pointer; user-select: none; margin-bottom: 10px; transition: transform 0.2s; }
-    .logo-click:active { transform: scale(0.95); }
+    /* Cabecera dinámica controlada por marca */
+    header { background: #4CAF50; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .header-logo { max-height: 80px; max-width: 180px; object-fit: contain; display: none; } /* Se muestra si hay URL válida */
+    header h2 { margin: 0; }
+
+    main { padding: 20px; max-width: 600px; margin: auto; }
     
-    input, select { width: 100%; padding: 12px; margin: 8px 0; border: 2px solid #dcdde1; border-radius: 8px; box-sizing: border-box; font-size: 15px; }
+    /* Lector QR con fondo claro */
+    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; }
+    #reader video { width: 100% !important; object-fit: cover; }
     
-    /* Botón dinámico controlado por base de datos */
-    .btn-principal { width: 100%; padding: 14px; background: #2ecc71; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .formulario { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .formulario h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
+    .formulario input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
+    .formulario input:focus { border-color: #4CAF50; outline: none; }
     
-    .footer-texto { font-size: 0.8rem; color: #7f8c8d; margin-top: 25px; }
+    .banner-alerta { background: #ff7675; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; }
+    
+    /* Botón dinámico configurable */
+    button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+    button:hover { filter: brightness(0.9); }
+    button:disabled { background: #cccccc; cursor: not-allowed; }
+    
+    .table-container { width: 100%; overflow-x: auto; margin-top: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    th, td { border-bottom: 1px solid #ddd; padding: 12px 10px; text-align: center; }
+    th { background: #4CAF50; color: white; }
+    label { display: flex; align-items: center; margin: 10px 0; font-weight: 500; cursor: pointer; }
+    label input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; }
+    
+    /* Animación y transición de color para el cuadro QR */
+    #resultadoQR { margin-top: 15px; padding: 12px; background: #eef2f7; border-radius: 6px; text-align: center; font-size: 0.95rem; font-weight: bold; transition: all 0.3s ease; border: 1px solid transparent; }
+    .scan-exito { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; transform: scale(1.02); }
+    
+    /* TEXTO DE CONTADOR GRANDE Y RELLENO */
+    #contador { margin-top: 15px; font-size: 24px; color: #27ae60; font-weight: 800; text-align: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px dashed #4CAF50; letter-spacing: 0.5px; }
+    
+    .loading { opacity: 0.5; pointer-events: none; }
+    
+    /* Botón rojo de eliminar cartón */
+    .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; color: white; border: none; cursor: pointer; }
+    .btn-eliminar:hover { background: #e84393; }
+    
+    /* Etiqueta de aviso para cartones duplicados */
+    .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
+    .fila-duplicada { background-color: #ffeaa7; } 
   </style>
-  <script src="https://unpkg.com/@supabase/supabase-js@2" defer></script>
-  <script src="conexion.js" defer></script>
+  
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="conexion.js"></script>
 </head>
 <body>
+  <header id="headerRegistro">
+    <img id="logoDinamico" class="header-logo" src="" alt="Bingo Logo">
+    <h2 id="tituloHeader">Registro de Cartones - TuBingo Pro</h2>
+  </header>
+  
+  <main id="contenidoPrincipal">
+    <div id="bannerCierre" class="banner-alerta">⚠️ EL REGISTRO DE CARTONES YA ESTÁ CERRADO</div>
 
-  <div class="container">
-    <!-- Logotipo con redirección oculta (3 Clics) -->
-    <img id="logoDinamico" class="logo-click" src="https://via.placeholder.com/150" alt="Bingo Logo">
-    <h2 style="margin-top:0;">Registro de Cartones Oficial</h2>
-    <p style="color:#7f8c8d; font-size:0.9rem; margin-top:-5px;">Valida tu código de canal y registra tu cartón</p>
-
-    <div id="formularioBingo">
-      <input type="text" id="regNombre" placeholder="Tu Nombre Completo">
-      <input type="text" id="regTelefono" placeholder="Número de Celular">
-      <input type="text" id="regCiudad" placeholder="Ciudad / Dirección">
-      <input type="text" id="regCorreo" placeholder="Correo Electrónico">
-      <input type="text" id="regCarton" placeholder="Código de Barra / Serie del Cartón">
+    <div class="formulario" style="margin-top:0;">
+      <h3>Escanear Código QR</h3>
+      <label><input type="checkbox" id="leerTodos" checked> Permitir múltiples cartones</label>
+      <div id="reader"></div>
+      <div id="resultadoQR">Esperando acción o escaneo...</div>
       
-      <!-- Validación Exigida en la conversación -->
-      <input type="text" id="regCodigoCanal" placeholder="🔑 Código Secreto del Canal" style="border: 2px solid #3498db; text-transform: uppercase;">
-      
-      <button id="btnRegistrar" class="btn-principal" onclick="procesarRegistroCarton()">Registrar Mi Cartón</button>
+      <div id="contador">Cartones en lista: 0</div>
     </div>
 
-    <p class="footer-texto">&copy; 2026 TuBingo Pro. Operación local autorizada.</p>
-  </div>
+    <div class="formulario">
+      <h3>Datos personales</h3>
+      <input type="text" id="nombre" placeholder="Nombre Completo" required>
+      <input type="text" id="celular" placeholder="Número de Celular" required>
+      <input type="text" id="correo" placeholder="Correo Electrónico" required>
+      <input type="text" id="ciudad" placeholder="Ciudad (Ej: Guayaquil)" required>
+      <input type="text" id="direccion" placeholder="Dirección Exacta (Ej: Isla Trinitaria solar 45)" required>
+      <input type="text" id="vendedor" placeholder="Nombre del Vendedor (Opcional)">
+      
+      <div style="margin-top: 15px; border-top: 1px solid #edf2f7; padding-top: 10px;">
+        <label for="codigoCanal" style="font-weight: bold; color: #e67e22;">🔑 Código Secreto del Canal de WhatsApp:</label>
+        <input type="text" id="codigoCanal" placeholder="Escribe la clave fijada en nuestro canal" required style="border: 2px solid #e67e22; text-transform: uppercase; font-weight: bold;">
+      </div>
+
+      <button id="btnRegistrar" onclick="enviarAlBackend()">Registrar Cartones en el Sistema</button>
+    </div>
+
+    <div class="table-container">
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th class="dinamico-th">#</th>
+            <th class="dinamico-th">Serie (Cartón)</th>
+            <th class="dinamico-th">Ubicación</th>
+            <th class="dinamico-th">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
 
   <script>
-    // 1. TRUCO SECRETO: Redirección al panel tras 3 clics en el logo
-    let clicsLogo = 0;
-    document.getElementById("logoDinamico").addEventListener("click", () => {
-      clicsLogo++;
-      if (clicsLogo === 3) { window.location.href = "panel.html"; }
-      setTimeout(() => { clicsLogo = 0; }, 2000);
-    });
+    let CONFIG_SISTEMA = { limite_cartones: 5, fecha_cierre: null, caracteres_qr: 6 };
+    let listaQR = [];
+    let cartonesDuplicados = []; 
+    let ipPublica = "", geoLatitud = "", geoLongitud = "";
 
-    // 2. LEER E INYECTAR DISEÑO DINÁMICO DE MARCA AL CARGAR LA PÁGINA
-    window.addEventListener("DOMContentLoaded", async () => {
-      // Esperar brevemente a que conexion.js cargue _supabase
+    function emitirSonidoExito() {
+      try {
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime); 
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.12); 
+      } catch (e) { console.error(e); }
+    }
+
+    window.addEventListener('load', async () => {
+      fetch('https://api.ipify.org?format=json').then(res => res.json()).then(d => ipPublica = d.ip).catch(e => {});
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
+      }
+
+      // CARGAR CONFIGURACIÓN TÉCNICA Y DISEÑO EN TIEMPO REAL (De index9)
       setTimeout(async () => {
         try {
-          const { data } = await _supabase.from('configuracion_sistema').select('clave, valor');
-          if (data) {
-            let logoUrl = data.find(x => x.clave === 'diseno_logo_url')?.valor;
-            let colorPrimario = data.find(x => x.clave === 'diseno_color_principal')?.valor;
+          const { data: configGeneral } = await _supabase.from('configuracion').select('*').eq('id', 1).single();
+          if (configGeneral) {
+            CONFIG_SISTEMA.limite_cartones = configGeneral.limite_cartones;
+            CONFIG_SISTEMA.fecha_cierre = new Date(configGeneral.fecha_cierre);
+            CONFIG_SISTEMA.caracteres_qr = configGeneral.caracteres_qr;
+            if (new Date() > CONFIG_SISTEMA.fecha_cierre) bloquearSistemaPorFecha();
+          }
 
-            if (logoUrl) document.getElementById("logoDinamico").src = logoUrl;
+          // Cargar personalización de diseño desde configuracion_sistema
+          const { data: diseno } = await _supabase.from('configuracion_sistema').select('clave, valor');
+          if (diseno) {
+            let logoUrl = diseno.find(x => x.clave === 'diseno_logo_url')?.valor;
+            let colorPrimario = diseno.find(x => x.clave === 'diseno_color_principal')?.valor;
+
+            if (logoUrl && logoUrl.trim() !== "") {
+              let imgEl = document.getElementById("logoDinamico");
+              imgEl.src = logoUrl;
+              imgEl.style.display = "block";
+            }
             if (colorPrimario) {
               document.getElementById("btnRegistrar").style.background = colorPrimario;
+              document.getElementById("headerRegistro").style.background = colorPrimario;
+              document.querySelectorAll(".dinamico-th").forEach(th => th.style.background = colorPrimario);
+              document.getElementById("reader").style.borderColor = colorPrimario;
+              document.getElementById("contador").style.color = colorPrimario;
+              document.getElementById("contador").style.borderColor = colorPrimario;
             }
           }
-        } catch(e) { console.error("Error cargando personalización visual: ", e); }
-      }, 600);
+        } catch (err) { console.error("Error cargando configuración remota:", err); }
+      }, 500);
     });
 
-    // 3. PROCESAR EL REGISTRO VALIDANDO EL CÓDIGO ACTUAL
-    async function procesarRegistroCarton() {
-      let nom = document.getElementById("regNombre").value.trim();
-      let tel = document.getElementById("regTelefono").value.trim();
-      let ciu = document.getElementById("regCiudad").value.trim();
-      let cor = document.getElementById("regCorreo").value.trim();
-      let car = document.getElementById("regCarton").value.trim().toUpperCase();
-      let codIngresado = document.getElementById("regCodigoCanal").value.trim().toUpperCase();
+    function bloquearSistemaPorFecha() {
+      document.getElementById("bannerCierre").style.display = "block";
+      document.getElementById("btnRegistrar").disabled = true;
+      document.getElementById("btnRegistrar").innerText = "Registro Cerrado por Fecha Límite";
+      document.getElementById("contenidoPrincipal").classList.add("loading");
+    }
 
-      if (!nom || !tel || !car || !codIngresado) { alert("Por favor complete los campos obligatorios."); return; }
+    function actualizarContador() {
+      document.getElementById("contador").innerText = "Cartones en lista: " + listaQR.length;
+    }
+
+    function procesarFormato(texto) {
+      let formato = CONFIG_SISTEMA.caracteres_qr;
+      let pos = texto.indexOf("@");
+      if (pos !== -1 && texto.length > pos + formato) {
+        return texto.substring(pos+1, pos+1+formato);
+      }
+      return texto;
+    }
+
+    function onScanSuccess(decodedText) {
+      let ahora = new Date();
+      if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
+        bloquearSistemaPorFecha();
+        return;
+      }
+
+      let procesado = procesarFormato(decodedText);
+      
+      if (!listaQR.includes(procesado)) {
+        emitirSonidoExito();
+        let contenedorResultado = document.getElementById("resultadoQR");
+        contenedorResultado.innerText = "¡Leído con éxito!: " + procesado;
+        contenedorResultado.classList.add("scan-exito");
+        
+        setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 1000);
+
+        if (document.getElementById("leerTodos").checked) {
+          listaQR.push(procesado);
+        } else {
+          listaQR = [procesado];
+        }
+        actualizarTabla();
+      } else {
+        document.getElementById("resultadoQR").innerText = "El código " + procesado + " ya lo escaneaste abajo.";
+      }
+    }
+
+    let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+    scanner.render(onScanSuccess, (err) => {});
+
+    function actualizarTabla() {
+      let tbody = document.querySelector("#tabla tbody");
+      tbody.innerHTML = "";
+      let ciudadInput = document.getElementById("ciudad").value.trim() || "---";
+      let direccionInput = document.getElementById("direccion").value.trim() || "---";
+
+      if(listaQR.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
+        actualizarContador();
+        return;
+      }
+
+      listaQR.forEach((qr, index) => {
+        let fila = document.createElement("tr");
+        let esDuplicado = cartonesDuplicados.includes(qr);
+        if(esDuplicado) fila.classList.add("fila-duplicada");
+
+        fila.innerHTML = `
+          <td>${index + 1}</td>
+          <td><strong>${qr}</strong></td>
+          <td>${ciudadInput} - ${direccionInput}</td>
+          <td>
+            <button class="btn-eliminar" onclick="eliminarCarton(${index})">Eliminar</button>
+            ${esDuplicado ? '<span class="alerta-duplicado">⚠️ DUPLICADO</span>' : ''}
+          </td>
+        `;
+        tbody.appendChild(fila);
+      });
+      actualizarContador();
+    }
+
+    function eliminarCarton(index) {
+      let qrRemovido = listaQR[index];
+      listaQR.splice(index, 1);
+      cartonesDuplicados = cartonesDuplicados.filter(item => item !== qrRemovido);
+      actualizarTabla();
+    }
+
+    document.getElementById("ciudad").addEventListener("input", actualizarTabla);
+    document.getElementById("direccion").addEventListener("input", actualizarTabla);
+
+    async function enviarAlBackend() {
+      let ahora = new Date();
+      if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
+        bloquearSistemaPorFecha();
+        alert("El tiempo de registro de cartones ha expirado.");
+        return;
+      }
+
+      let nombre = document.getElementById("nombre").value.trim();
+      let celular = document.getElementById("celular").value.trim();
+      let correo = document.getElementById("correo").value.trim();
+      let ciudad = document.getElementById("ciudad").value.trim();
+      let direccion = document.getElementById("direccion").value.trim();
+      let vendedor = document.getElementById("vendedor").value.trim() || "WEB";
+      let codigoIngresado = document.getElementById("codigoCanal").value.trim().toUpperCase();
+
+      if (!nombre || !celular || !correo || !ciudad || !direccion || !codigoIngresado) {
+        alert("Por favor complete todos los campos requeridos.");
+        return;
+      }
+
+      if (listaQR.length === 0) {
+        alert("Escanee al menos un cartón QR.");
+        return;
+      }
+
+      let mainEl = document.getElementById("contenidoPrincipal");
+      let btn = document.getElementById("btnRegistrar");
+      mainEl.classList.add("loading");
+      btn.innerText = "Verificando códigos...";
+
+      cartonesDuplicados = [];
 
       try {
-        // Consultar el código correcto activo en este segundo
-        const { data: config } = await _supabase.from('configuracion_sistema').select('valor').eq('clave', 'codigo_canal_whatsapp').maybeSingle();
-        
-        if (!config || codIngresado !== config.valor.toUpperCase()) {
-          alert("❌ El código del canal de WhatsApp es incorrecto o ya expiró. Revisa el canal e intenta de nuevo.");
+        const { data: configCanal, error: errConfig } = await _supabase
+          .from('configuracion_sistema')
+          .select('valor')
+          .eq('clave', 'codigo_canal_whatsapp')
+          .maybeSingle();
+
+        if (errConfig) throw errConfig;
+
+        if (!configCanal || codigoIngresado !== configCanal.valor.toUpperCase()) {
+          alert("❌ El Código Secreto del Canal de WhatsApp es incorrecto.");
+          mainEl.classList.remove("loading");
+          btn.innerText = "Registrar Cartones en el Sistema";
           return;
         }
 
-        // Insertar en la tabla registros_bingo
-        const { error } = await _supabase.from('registros_bingo').insert({
-          carton: car, nombre: nom, telefono: tel, ciudad: ciu, correo: cor
-        });
+        const { data: existentes, error: errConteo } = await _supabase
+          .from('registros_bingo')
+          .select('id')
+          .eq('telefono', celular);
 
-        if (error) {
-          if (error.code === '23505') alert("⚠️ Este número de cartón ya se encuentra registrado.");
-          else throw error;
-        } else {
-          alert("🎉 ¡Excelente! Tu cartón ha sido registrado exitosamente para el sorteo.");
-          document.getElementById("regCarton").value = "";
+        if (errConteo) throw errConteo;
+
+        if (existentes.length + listaQR.length > CONFIG_SISTEMA.limite_cartones) {
+          alert(`¡Cupo Excedido! Límite actual de máximo ${CONFIG_SISTEMA.limite_cartones}.`);
+          mainEl.classList.remove("loading");
+          btn.innerText = "Registrar Cartones en el Sistema";
+          return;
         }
-      } catch(err) { alert("Error: " + err.message); }
+
+        const { data: yaRegistrados, error: errValidacion } = await _supabase
+          .from('registros_bingo')
+          .select('carton')
+          .in('carton', listaQR);
+
+        if (errValidacion) throw errValidacion;
+
+        if (yaRegistrados && yaRegistrados.length > 0) {
+          cartonesDuplicados = yaRegistrados.map(row => row.carton);
+          actualizarTabla();
+          alert("¡Atención! Se detectaron cartones duplicados en uso por otra persona.");
+          mainEl.classList.remove("loading");
+          btn.innerText = "Registrar Cartones en el Sistema";
+          return;
+        }
+
+        let ubicacionCompleta = `${ciudad} - ${direccion}`;
+        let filasAInsertar = listaQR.map(serie => ({
+          carton: serie, nombre: nombre, correo: correo, telefono: celular,
+          ciudad: ubicacionCompleta, vendedor: vendedor, ip_publica: ipPublica,
+          gps_latitud: geoLatitud ? geoLatitud.toString() : "", gps_longitud: geoLongitud ? geoLongitud.toString() : ""
+        }));
+
+        const { error: errInsert } = await _supabase.from('registros_bingo').insert(filasAInsertar);
+        if (errInsert) throw errInsert;
+
+        alert("¡Todos tus cartones han sido registrados exitosamente!");
+        listaQR = [];
+        actualizarTabla();
+        document.getElementById("nombre").value = "";
+        document.getElementById("celular").value = "";
+        document.getElementById("correo").value = "";
+        document.getElementById("ciudad").value = "";
+        document.getElementById("direccion").value = "";
+        document.getElementById("vendedor").value = "";
+        document.getElementById("codigoCanal").value = "";
+
+      } catch (err) { alert("Error: " + err.message); } 
+      finally { mainEl.classList.remove("loading"); btn.innerText = "Registrar Cartones en el Sistema"; }
     }
   </script>
 </body>
