@@ -9,7 +9,7 @@
     header { background: #4CAF50; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     main { padding: 20px; max-width: 600px; margin: auto; }
     
-    /* Lector QR con fondo claro para legibilidad del texto de fondo */
+    /* Lector QR con fondo claro */
     #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; }
     #reader video { width: 100% !important; object-fit: cover; }
     
@@ -19,7 +19,6 @@
     .formulario input:focus { border-color: #4CAF50; outline: none; }
     
     .banner-alerta { background: #ff7675; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; }
-    .info-config { background: #e8f4fd; color: #2980b9; padding: 10px; border-radius: 6px; font-size: 0.9rem; margin-bottom: 15px; text-align: center; font-weight: 500; }
     
     button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
     button:hover { background: #45a049; }
@@ -36,8 +35,12 @@
     .loading { opacity: 0.5; pointer-events: none; }
     
     /* Botón rojo de eliminar cartón */
-    .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; }
+    .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; color: white; border: none; cursor: pointer; }
     .btn-eliminar:hover { background: #e84393; }
+    
+    /* Etiqueta de aviso para cartones duplicados */
+    .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
+    .fila-duplicada { background-color: #ffeaa7; } /* Resalta levemente la fila que tiene problemas */
   </style>
   
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -52,7 +55,6 @@
   <main id="contenidoPrincipal">
     
     <div id="bannerCierre" class="banner-alerta">⚠️ EL REGISTRO DE CARTONES YA ESTÁ CERRADO</div>
-    <div id="infoConfig" class="info-config">Sincronizando parámetros con la base de datos...</div>
 
     <div class="formulario" style="margin-top:0;">
       <h3>Escanear Código QR</h3>
@@ -60,8 +62,6 @@
       <div id="reader"></div>
       <div id="resultadoQR">Esperando acción o escaneo...</div>
       <div id="contador">Cartones en lista: 0</div>
-      <br>
-      <input type="file" id="fileInput" accept="image/*" multiple style="width:100%;">
     </div>
 
     <div class="formulario">
@@ -82,7 +82,8 @@
             <th>#</th>
             <th>Serie (Cartón)</th>
             <th>Ubicación</th>
-            <th>Acción</th> </tr>
+            <th>Acción</th>
+          </tr>
         </thead>
         <tbody>
           <tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>
@@ -100,6 +101,9 @@
     };
 
     let listaQR = [];
+    // Aquí guardaremos cuáles cartones específicos han sido detectados como duplicados por el servidor
+    let cartonesDuplicados = []; 
+    
     let ipPublica = "", geoLatitud = "", geoLongitud = "";
 
     window.addEventListener('load', async () => {
@@ -108,7 +112,7 @@
         navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
       }
 
-      // El objeto _supabase viene cargado directamente desde tu conexion.js de forma oculta
+      // El objeto _supabase viene cargado desde tu conexion.js de forma oculta
       try {
         const { data, error } = await _supabase
           .from('configuracion')
@@ -122,9 +126,6 @@
         CONFIG_SISTEMA.fecha_cierre = new Date(data.fecha_cierre);
         CONFIG_SISTEMA.caracteres_qr = data.caracteres_qr;
 
-        document.getElementById("infoConfig").innerText = 
-          `Configuración activa: Máximo ${CONFIG_SISTEMA.limite_cartones} cartones | Formato: @ + ${CONFIG_SISTEMA.caracteres_qr} dígitos.`;
-
         let ahora = new Date();
         if (ahora > CONFIG_SISTEMA.fecha_cierre) {
           bloquearSistemaPorFecha();
@@ -132,7 +133,6 @@
 
       } catch (err) {
         console.error("Error al leer configuración remota:", err);
-        document.getElementById("infoConfig").innerText = "Aviso: Ejecutando con parámetros por defecto.";
       }
     });
 
@@ -179,19 +179,7 @@
     let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
     scanner.render(onScanSuccess, (err) => {});
 
-    document.getElementById("fileInput").addEventListener("change", async (event) => {
-      const files = event.target.files;
-      for (let file of files) {
-        try {
-          const qrCode = await Html5Qrcode.scanFile(file, true);
-          let procesado = procesarFormato(qrCode);
-          if (!listaQR.includes(procesado)) listaQR.push(procesado);
-        } catch (err) { console.error(err); }
-      }
-      actualizarTabla();
-    });
-
-    // TABLA MEJORADA: Conector visual del botón eliminar individual
+    // TABLA ACTUALIZADA CON DETECTOR INDIVIDUAL DE DUPLICADOS
     function actualizarTabla() {
       let tbody = document.querySelector("#tabla tbody");
       tbody.innerHTML = "";
@@ -207,12 +195,20 @@
 
       listaQR.forEach((qr, index) => {
         let fila = document.createElement("tr");
+        
+        // Verificar si este cartón específico falló en la verificación por duplicado
+        let esDuplicado = cartonesDuplicados.includes(qr);
+        if(esDuplicado) {
+          fila.classList.add("fila-duplicada");
+        }
+
         fila.innerHTML = `
           <td>${index + 1}</td>
           <td><strong>${qr}</strong></td>
           <td>${ciudadInput} - ${direccionInput}</td>
           <td>
             <button class="btn-eliminar" onclick="eliminarCarton(${index})">Eliminar</button>
+            ${esDuplicado ? '<span class="alerta-duplicado">⚠️ DUPLICADO</span>' : ''}
           </td>
         `;
         tbody.appendChild(fila);
@@ -220,16 +216,20 @@
       actualizarContador();
     }
 
-    // Función para sacar cartones repetidos o erróneos de la lista
     function eliminarCarton(index) {
+      let qrRemovido = listaQR[index];
       listaQR.splice(index, 1);
+      
+      // Removerlo también de la lista de duplicados si es que estaba ahí
+      cartonesDuplicados = cartonesDuplicados.filter(item => item !== qrRemovido);
+      
       actualizarTabla();
     }
 
     document.getElementById("ciudad").addEventListener("input", actualizarTabla);
     document.getElementById("direccion").addEventListener("input", actualizarTabla);
 
-    // GUARDADO MASIVO SEGURO
+    // ENVÍO DE DATOS
     async function enviarAlBackend() {
       let ahora = new Date();
       if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
@@ -258,9 +258,13 @@
       let mainEl = document.getElementById("contenidoPrincipal");
       let btn = document.getElementById("btnRegistrar");
       mainEl.classList.add("loading");
-      btn.innerText = "Verificando cupos libres...";
+      btn.innerText = "Verificando códigos...";
+
+      // Resetear indicador de duplicados antes de cada envío
+      cartonesDuplicados = [];
 
       try {
+        // 1. Validar límite de cartones permitidos en la cuenta por teléfono
         const { data: existentes, error: errConteo } = await _supabase
           .from('registros_bingo')
           .select('id')
@@ -269,14 +273,33 @@
         if (errConteo) throw errConteo;
 
         if (existentes.length + listaQR.length > CONFIG_SISTEMA.limite_cartones) {
-          alert(`¡Cupo Excedido! Este celular ya registra ${existentes.length} cartones en el sistema. Tu límite actual es de ${CONFIG_SISTEMA.limite_cartones}.`);
+          alert(`¡Cupo Excedido! Este celular ya registra ${existentes.length} cartones. Tu límite actual es de máximo ${CONFIG_SISTEMA.limite_cartones}.`);
           mainEl.classList.remove("loading");
           btn.innerText = "Registrar Cartones en el Sistema";
           return;
         }
 
-        let ubicacionCompleta = `${ciudad} - ${direccion}`;
+        // 2. COMPROBACIÓN INDIVIDUAL EN TIEMPO REAL PARA BUSCAR QUÉ CARTÓN EXACTO ESTÁ REPETIDO
+        // Hacemos una consulta rápida para ver cuáles de los cartones escaneados ya existen en la base de datos
+        const { data: yaRegistrados, error: errValidacion } = await _supabase
+          .from('registros_bingo')
+          .select('carton')
+          .in('carton', listaQR);
 
+        if (errValidacion) throw errValidacion;
+
+        // Si la base de datos encontró coincidencias, los marcamos
+        if (yaRegistrados && yaRegistrados.length > 0) {
+          cartonesDuplicados = yaRegistrados.map(row => row.carton);
+          actualizarTabla(); // Refresca la tabla para pintar las filas amarillas y el aviso de duplicado
+          alert("¡Atención! Se detectaron cartones que ya han sido registrados previamente por otro usuario. Se han marcado en la lista. Bórralos usando el botón de 'Eliminar' para poder procesar el resto.");
+          mainEl.classList.remove("loading");
+          btn.innerText = "Registrar Cartones en el Sistema";
+          return;
+        }
+
+        // 3. Si pasó la prueba (Cero duplicados en la lista), procedemos a insertar el lote entero
+        let ubicacionCompleta = `${ciudad} - ${direccion}`;
         let filasAInsertar = listaQR.map(serie => ({
           carton: serie,
           nombre: nombre,
@@ -293,25 +316,22 @@
           .from('registros_bingo')
           .insert(filasAInsertar);
 
-        if (errInsert) {
-          if (errInsert.code === "23505") {
-            alert("¡Atención!: Uno de los cartones que escaneaste ya fue registrado anteriormente en la base de datos por otra persona. Encuéntralo y usa el botón 'Eliminar' para quitarlo de tu lista.");
-          } else { throw errInsert; }
-        } else {
-          alert("¡Todos tus cartones han sido registrados exitosamente!");
-          listaQR = [];
-          actualizarTabla();
-          document.getElementById("nombre").value = "";
-          document.getElementById("celular").value = "";
-          document.getElementById("correo").value = "";
-          document.getElementById("ciudad").value = "";
-          document.getElementById("direccion").value = "";
-          document.getElementById("vendedor").value = "";
-        }
+        if (errInsert) throw errInsert;
+
+        // ÉXITO TOTAL
+        alert("¡Todos tus cartones han sido registrados exitosamente!");
+        listaQR = [];
+        actualizarTabla();
+        document.getElementById("nombre").value = "";
+        document.getElementById("celular").value = "";
+        document.getElementById("correo").value = "";
+        document.getElementById("ciudad").value = "";
+        document.getElementById("direccion").value = "";
+        document.getElementById("vendedor").value = "";
 
       } catch (err) {
         console.error(err);
-        alert("Error de conexión: " + err.message);
+        alert("Error de procesamiento: " + err.message);
       } finally {
         mainEl.classList.remove("loading");
         btn.innerText = "Registrar Cartones en el Sistema";
