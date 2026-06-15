@@ -67,6 +67,8 @@
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
+  <!-- Incluimos jsQR para la localización milimétrica y recorte del código QR -->
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="conexion.js"></script>
 </head>
@@ -129,10 +131,10 @@
     </div>
   </main>
 
+  <!-- Canvas principal oculto para procesar el PDF -->
   <canvas id="canvasPdfRender" style="display:none;"></canvas>
 
   <script>
-    // Configurar ruta interna para PDF.js de Mozilla
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     let CONFIG_SISTEMA = { limite_cartones: 5, fecha_cierre: null, caracteres_qr: 6 };
@@ -246,7 +248,7 @@
           let minutosRestantes = Math.floor(diferenciaMilisegundos / (1000 * 60));
           let segundosRestantes = Math.floor((diferenciaMilisegundos % (1000 * 60)) / 1000);
 
-          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
+          let minutosTxt = minutesRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
           let segundosTxt = segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes;
 
           let bannerRegresivo = document.getElementById("bannerCuentaRegresiva");
@@ -309,7 +311,7 @@
     scanner.render(onScanSuccess, (err) => {});
 
     /* =========================================================================
-       FUNCIÓN DE EXTRACCIÓN AVANZADA DE QR CON FILTRO UMBRAL BINARIO PARA PDF
+       FUNCIÓN MEJORADA: LOCALIZACIÓN, RECORTE SUB-PIXEL Y AUTO-NITIDEZ DEL QR
        ========================================================================= */
     async function procesarCartonesDesdePdf(input) {
       if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
@@ -325,7 +327,7 @@
       let mainEl = document.getElementById("contenidoPrincipal");
       
       mainEl.classList.add("loading");
-      contenedorResultado.innerText = "📄 Analizando posiciones en el PDF a alta resolución...";
+      contenedorResultado.innerText = "📄 Localizando y recortando códigos QR en el PDF...";
 
       try {
         let arrayBuffer = await archivo.arrayBuffer();
@@ -333,17 +335,18 @@
         let totalPaginas = pdf.numPages;
         let qrEncontradosEnPdf = 0;
 
-        let html5QrCodeScannerInstance = new Html5Qrcode("canvasPdfRender");
         let canvas = document.getElementById("canvasPdfRender");
         let ctx = canvas.getContext("2d");
 
+        // Creamos un canvas virtual secundario para procesar el aislamiento del QR recortado
+        let canvasRecorte = document.createElement("canvas");
+        let ctxRecorte = canvasRecorte.getContext("2d");
+
         for (let paginaNum = 1; paginaNum <= totalPaginas; paginaNum++) {
-          contenedorResultado.innerText = `Escaneando página ${paginaNum} de ${totalPaginas}...`;
+          contenedorResultado.innerText = `Buscando QR en página ${paginaNum} de ${totalPaginas}...`;
           
           let pagina = await pdf.getPage(paginaNum);
-          
-          // Escalamos a 2.5 para procesar rápidamente sin colgar los celulares de los usuarios
-          let escalaRender = 2.5; 
+          let escalaRender = 2.5; // Alta definición controlada para no congelar navegadores móviles
           let vista = pagina.getViewport({ scale: escalaRender });
 
           canvas.width = vista.width;
@@ -352,65 +355,91 @@
           let renderContext = { canvasContext: ctx, viewport: vista };
           await pagina.render(renderContext).promise;
 
-          // Intento 1: Escaneo plano directo
-          let imagenMuestraBase64 = canvas.toDataURL("image/jpeg", 0.85);
+          // 1. OBTENER MAPA DE PÍXELES CRUDOS PARA IDENTIFICAR PATRONES DE ESQUINA
+          let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          
+          // Localización geométrica del QR usando el localizador matemático jsQR
+          let codigoLocalizado = jsQR(imgData.data, imgData.width, imgData.height, {
+            inversionAttempts: "dontInvert",
+          });
 
-          try {
-            let resultadoImagen = await html5QrCodeScannerInstance.scanImage(imagenMuestraBase64);
-            if (resultadoImagen) {
-              let codigoLimpio = procesarFormato(resultadoImagen);
+          if (codigoLocalizado) {
+            // 2. CÁLCULO DE CAJA DE LÍMITES (BOUNDING BOX) CON MARGEN DE SEGURIDAD (QUIET ZONE)
+            let loc = codigoLocalizado.location;
+            let xs = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomRightCorner.x, loc.bottomLeftCorner.x];
+            let ys = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomRightCorner.y, loc.bottomLeftCorner.y];
+            
+            let minX = Math.min(...xs), maxX = Math.max(...xs);
+            let minY = Math.min(...ys), maxY = Math.max(...ys);
+
+            let qrAncho = maxX - minX;
+            let qrAlto = maxY - minY;
+
+            // Agregamos un margen limpio del 15% para que los bordes del QR no se corten
+            let margenX = qrAncho * 0.15;
+            let margenY = qrAlto * 0.15;
+
+            let xRecorte = Math.max(0, minX - margenX);
+            let yRecorte = Math.max(0, minY - margenY);
+            let anchoRecorte = Math.min(canvas.width - xRecorte, qrAncho + (margenX * 2));
+            let altoRecorte = Math.min(canvas.height - yRecorte, qrAlto + (margenY * 2));
+
+            // 3. TRANSFERIR EL FRAGMENTO EXTRAÍDO AL CANVAS DE RECORTE
+            canvasRecorte.width = anchoRecorte;
+            canvasRecorte.height = altoRecorte;
+            
+            ctxRecorte.drawImage(
+              canvas, 
+              xRecorte, yRecorte, anchoRecorte, altoRecorte, // Coordenadas del PDF original
+              0, 0, anchoRecorte, altoRecorte               // Ubicación en el lienzo nuevo
+            );
+
+            // 4. FILTRO DE AUTO-NITIDEZ EXTREMA (Binarización Umbralizada)
+            let imgDataRecorte = ctxRecorte.getImageData(0, 0, canvasRecorte.width, canvasRecorte.height);
+            let pixeles = imgDataRecorte.data;
+
+            for (let i = 0; i < pixeles.length; i += 4) {
+              // Convertimos a escala de grises mediante peso lumínico exacto
+              let brillo = 0.299 * pixeles[i] + 0.587 * pixeles[i+1] + 0.114 * pixeles[i+2];
+              // Si el píxel tiende a gris/oscuro lo forzamos a negro absoluto, si es claro a blanco absoluto
+              let colorNitido = brillo < 130 ? 0 : 255; 
+              pixeles[i] = colorNitido;     // R
+              pixeles[i+1] = colorNitido;   // G
+              pixeles[i+2] = colorNitido;   // B
+            }
+            ctxRecorte.putImageData(imgDataRecorte, 0, 0);
+
+            // 5. SEGUNDA LECTURA DIRECTA SOBRE LA IMAGEN LIMPIA AISLADA
+            let imgDataNitida = ctxRecorte.getImageData(0, 0, canvasRecorte.width, canvasRecorte.height);
+            let qrAisladoYProcesado = jsQR(imgDataNitida.data, imgDataNitida.width, imgDataNitida.height);
+
+            let textoFinalQR = qrAisladoYProcesado ? qrAisladoYProcesado.data : codigoLocalizado.data;
+
+            if (textoFinalQR) {
+              let codigoLimpio = procesarFormato(textoFinalQR);
               if (!listaQR.includes(codigoLimpio)) {
                 listaQR.push(codigoLimpio);
                 qrEncontradosEnPdf++;
               }
-              continue; 
             }
-          } catch (errorFirstScan) {
-            // Intento 2 (Solución definitiva): Si falla, aislamos el QR eliminando el diseño de fondo
-            // Aplicamos un umbral (Thresholding) para convertir todo el canvas a blanco y negro absoluto
-            try {
-              let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              let datos = imgData.data;
-              
-              for (let i = 0; i < datos.length; i += 4) {
-                // Multiplicadores estándar de brillo percibido humano
-                let brillo = 0.3 * datos[i] + 0.59 * datos[i+1] + 0.11 * datos[i+2];
-                let k = brillo < 125 ? 0 : 255; // Píxeles grises/oscuros van a negro puro (0), claros a blanco (255)
-                datos[i] = k;     // Rojo
-                datos[i+1] = k;   // Verde
-                datos[i+2] = k;   // Azul
-              }
-              ctx.putImageData(imgData, 0, 0);
-              
-              let imagenContrasteBase64 = canvas.toDataURL("image/jpeg", 0.9);
-              let resultadoContraste = await html5QrCodeScannerInstance.scanImage(imagenContrasteBase64);
-              
-              if (resultadoContraste) {
-                let codigoLimpio = procesarFormato(resultadoContraste);
-                if (!listaQR.includes(codigoLimpio)) {
-                  listaQR.push(codigoLimpio);
-                  qrEncontradosEnPdf++;
-                }
-              }
-            } catch (errorSecondScan) {
-              console.log(`Página ${paginaNum}: No se detectaron patrones QR viables.`);
-            }
+          } else {
+            console.log(`Página ${paginaNum}: No se detectaron patrones de localización de QR.`);
           }
         }
 
         if (qrEncontradosEnPdf > 0) {
           emitirSonidoExito();
-          contenedorResultado.innerText = `🎉 ¡Éxito! Se añadieron ${qrEncontradosEnPdf} cartones desde el PDF.`;
+          contenedorResultado.innerText = `🎉 ¡Éxito! Se añadieron ${qrEncontradosEnPdf} cartones mediante aislamiento y auto-recorte.`;
           contenedorResultado.classList.add("scan-exito");
           setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 2500);
           actualizarTabla();
         } else {
-          alert("⚠️ El sistema leyó el documento completo pero no encontró ningún código QR reconocible.\n\nAsegúrate de que los códigos QR no estén tapados por otros textos y mantengan un pequeño recuadro blanco a su alrededor.");
+          alert("⚠️ El sistema no pudo segmentar o aislar los códigos QR.\n\nVerifica que las tablas de juego no obstruyan los tres cuadrados de las esquinas del código QR.");
           contenedorResultado.innerText = "Esperando acción o escaneo...";
         }
 
       } catch (err) {
-        alert("Error de procesamiento en el PDF: " + err.message);
+        alert("Error de procesamiento en la segmentación: " + err.message);
         contenedorResultado.innerText = "Error leyendo archivo.";
       } finally {
         mainEl.classList.remove("loading");
@@ -539,4 +568,28 @@
 
         let ubicacionCompleta = `${ciudad} - ${direccion}`;
         let filasAInsertar = listaQR.map(serie => ({
-          carton: serie,
+          carton: serie, nombre: nombre, correo: correo, telefono: celular,
+          ciudad: ubicacionCompleta, vendedor: vendedor, ip_publica: ipPublica,
+          gps_latitud: geoLatitud ? geoLatitud.toString() : "", gps_longitud: geoLongitud ? geoLongitud.toString() : ""
+        }));
+
+        const { error: errInsert } = await _supabase.from('registros_bingo').insert(filasAInsertar);
+        if (errInsert) throw errInsert;
+
+        alert("¡Todos tus cartones han sido registrados exitosamente!");
+        listaQR = [];
+        actualizarTabla();
+        document.getElementById("nombre").value = "";
+        document.getElementById("celular").value = "";
+        document.getElementById("correo").value = "";
+        document.getElementById("ciudad").value = "";
+        document.getElementById("direccion").value = "";
+        document.getElementById("vendedor").value = "";
+        document.getElementById("codigoCanal").value = "";
+
+      } catch (err) { alert("Error: " + err.message); } 
+      finally { mainEl.classList.remove("loading"); btn.innerText = "Registrar Cartones en el Sistema"; }
+    }
+  </script>
+</body>
+</html>
