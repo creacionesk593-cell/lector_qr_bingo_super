@@ -6,68 +6,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f9f9f9; color: #333; }
-    
-    /* Cabecera dinámica controlada por marca */
     header { background: #4CAF50; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; gap: 10px; }
     .header-logo { max-height: 80px; max-width: 180px; object-fit: contain; display: none; } 
     header h2 { margin: 0; }
-
     main { padding: 20px; max-width: 600px; margin: auto; }
-    
-    /* Lector QR con fondo claro y transición */
     #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; transition: border-color 0.3s ease; }
     #reader video { width: 100% !important; object-fit: cover; }
-    
     .formulario { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .formulario h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
     .formulario input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
     .formulario input:focus { outline: none; }
-    
     .banner-alerta { background: #ff7675; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; }
-    
-    /* BANNER DE CUENTA REGRESIVA (15 Minutos antes) */
     .banner-cuenta-regresiva { background: #ff9f43; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; animation: parpadeo 1.5s infinite; }
     @keyframes parpadeo { 0% { opacity: 0.9; } 50% { opacity: 1; background: #ee5253; } 100% { opacity: 0.9; } }
-
-    /* Botones configurables */
     button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s, filter 0.2s; margin-top: 10px; }
     button:hover { filter: brightness(0.9); }
     button:disabled { background: #cccccc; cursor: not-allowed; }
-    
-    /* Botón personalizado para diseño del cargador de PDF */
     .btn-pdf-diseno { display: block; text-align: center; background: #34495e; color: white; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
     .btn-pdf-diseno:hover { background: #2c3e50; }
-
     .table-container { width: 100%; overflow-x: auto; margin-top: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
     th, td { border-bottom: 1px solid #ddd; padding: 12px 10px; text-align: center; }
     th { background: #4CAF50; color: white; }
     label { display: flex; align-items: center; margin: 10px 0; font-weight: 500; cursor: pointer; }
     label input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; }
-    
-    /* Cuadro de texto QR */
     #resultadoQR { margin-top: 15px; padding: 12px; background: #eef2f7; border-radius: 6px; text-align: center; font-size: 0.95rem; font-weight: bold; transition: all 0.3s ease; border: 1px solid transparent; }
     .scan-exito { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; transform: scale(1.02); }
-    
-    /* TEXTO DE CONTADOR GRANDE */
     #contador { margin-top: 15px; font-size: 24px; color: #27ae60; font-weight: 800; text-align: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px dashed #4CAF50; letter-spacing: 0.5px; transition: all 0.3s ease; }
-    
-    /* Capa de carga */
     .loading { opacity: 0.5; pointer-events: none; position: relative; }
-    
-    /* Botón rojo de eliminar */
     .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; color: white; border: none; cursor: pointer; }
     .btn-eliminar:hover { background: #e84393; }
-    
     .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
     .fila-duplicada { background-color: #ffeaa7; } 
   </style>
-  
   <style id="estilosDinamicosMarca"></style>
-  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
-  <!-- Incluimos jsQR para la localización milimétrica y recorte del código QR -->
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="conexion.js"></script>
@@ -131,7 +105,6 @@
     </div>
   </main>
 
-  <!-- Canvas principal oculto para procesar el PDF -->
   <canvas id="canvasPdfRender" style="display:none;"></canvas>
 
   <script>
@@ -163,7 +136,6 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
       }
-
       setTimeout(async () => {
         try {
           const { data: configGeneral } = await _supabase.from('configuracion').select('*').eq('id', 1).single();
@@ -173,97 +145,56 @@
             CONFIG_SISTEMA.fecha_cierre = new Date(configGeneral.fecha_cierre);
             iniciarMonitoreoTiempo();
           }
-
           const { data: diseno } = await _supabase.from('configuracion_sistema').select('clave, valor');
           if (diseno) {
             let logoUrl = diseno.find(x => x.clave === 'diseno_logo_url')?.valor;
             let colorPrimario = diseno.find(x => x.clave === 'diseno_color_principal')?.valor;
-
             if (logoUrl && logoUrl.trim() !== "") {
               let imgEl = document.getElementById("logoDinamico");
               imgEl.src = logoUrl;
               imgEl.style.display = "block";
             }
-            
             if (colorPrimario) {
               document.getElementById("btnRegistrar").style.background = colorPrimario;
               document.getElementById("headerRegistro").style.background = colorPrimario;
               document.querySelectorAll(".dinamico-th").forEach(th => th.style.background = colorPrimario);
-              
               document.getElementById("reader").style.borderColor = colorPrimario;
               document.getElementById("contador").style.color = colorPrimario;
               document.getElementById("contador").style.borderColor = colorPrimario;
-              
               document.querySelectorAll(".formulario input").forEach(input => {
                 input.addEventListener('focus', () => input.style.borderColor = colorPrimario);
                 input.addEventListener('blur', () => input.style.borderColor = '#ccc');
               });
-
-              document.getElementById("estilosDinamicosMarca").innerHTML = `
-                #reader button {
-                  background-color: ${colorPrimario} !important;
-                  color: white !important;
-                  border: none !important;
-                  padding: 10px 20px !important;
-                  font-weight: bold !important;
-                  border-radius: 5px !important;
-                  cursor: pointer !important;
-                  transition: filter 0.2s !important;
-                }
-                #reader button:hover {
-                  filter: brightness(0.85) !important;
-                }
-                #reader a {
-                  color: ${colorPrimario} !important;
-                  font-weight: bold !important;
-                }
-                #reader__scan_region img {
-                  filter: hue-rotate(90deg) !important;
-                }
-              `;
             }
           }
-        } catch (err) { console.error("Error cargando configuración remota:", err); }
+        } catch (err) { console.error(err); }
       }, 500);
     });
 
     function iniciarMonitoreoTiempo() {
       if (!CONFIG_SISTEMA.fecha_cierre) return;
       if (intervaloRegresivo) clearInterval(intervaloRegresivo);
-
       intervaloRegresivo = setInterval(() => {
-        let ahoraMilisegundos = new Date().getTime();
-        let cierreMilisegundos = CONFIG_SISTEMA.fecha_cierre.getTime();
-        let diferenciaMilisegundos = cierreMilisegundos - ahoraMilisegundos;
-
-        if (diferenciaMilisegundos <= 0) {
+        let ahora = new Date().getTime();
+        let diferencia = CONFIG_SISTEMA.fecha_cierre.getTime() - ahora;
+        if (diferencia <= 0) {
           clearInterval(intervaloRegresivo);
           document.getElementById("bannerCuentaRegresiva").style.display = "none";
           bloquearSistemaPorFecha();
           return;
         }
-
-        let quinceMinutosEnMs = 15 * 60 * 1000;
-        if (diferenciaMilisegundos <= quinceMinutosEnMs) {
-          let minutosRestantes = Math.floor(diferenciaMilisegundos / (1000 * 60));
-          let segundosRestantes = Math.floor((diferenciaMilisegundos % (1000 * 60)) / 1000);
-
-          let minutosTxt = minutesRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
-          let segundosTxt = segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes;
-
-          let bannerRegresivo = document.getElementById("bannerCuentaRegresiva");
-          bannerRegresivo.style.display = "block";
-          document.getElementById("tiempoRestante").innerText = `${minutosTxt}:${segundosTxt}`;
-        } else {
-          document.getElementById("bannerCuentaRegresiva").style.display = "none";
+        if (diferencia <= 15 * 60 * 1000) {
+          let mins = Math.floor(diferencia / (1000 * 60));
+          let secs = Math.floor((diferencia % (1000 * 60)) / 1000);
+          document.getElementById("bannerCuentaRegresiva").style.display = "block";
+          document.getElementById("tiempoRestante").innerText = (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
         }
       }, 1000);
     }
 
-    function bloquearSistemaPorFecha() {
+    function blockingSistemaPorFecha() {
       document.getElementById("bannerCierre").style.display = "block";
       document.getElementById("btnRegistrar").disabled = true;
-      document.getElementById("btnRegistrar").innerText = "Registro Cerrado por Fecha Límite";
       document.getElementById("contenidoPrincipal").classList.add("loading");
     }
 
@@ -277,33 +208,16 @@
       if (pos !== -1 && texto.length > pos + formato) {
         return texto.substring(pos+1, pos+1+formato);
       }
-      return texto;
+      return texto.length > 20 ? texto.substring(texto.length - formato) : texto;
     }
 
     function onScanSuccess(decodedText) {
-      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
-        bloquearSistemaPorFecha();
-        return;
-      }
-
       let procesado = procesarFormato(decodedText);
-      
       if (!listaQR.includes(procesado)) {
         emitirSonidoExito();
-        let contenedorResultado = document.getElementById("resultadoQR");
-        contenedorResultado.innerText = "¡Leído con éxito!: " + procesado;
-        contenedorResultado.classList.add("scan-exito");
-        
-        setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 1000);
-
-        if (document.getElementById("leerTodos").checked) {
-          listaQR.push(procesado);
-        } else {
-          listaQR = [procesado];
-        }
+        document.getElementById("resultadoQR").innerText = "¡Leído con éxito!: " + procesado;
+        if (document.getElementById("leerTodos").checked) { listaQR.push(procesado); } else { listaQR = [procesado]; }
         actualizarTabla();
-      } else {
-        document.getElementById("resultadoQR").innerText = "El código " + procesado + " ya lo escaneaste abajo.";
       }
     }
 
@@ -311,177 +225,125 @@
     scanner.render(onScanSuccess, (err) => {});
 
     /* =========================================================================
-       FUNCIÓN MEJORADA: LOCALIZACIÓN, RECORTE SUB-PIXEL Y AUTO-NITIDEZ DEL QR
+       PROCESADOR DE ALTO IMPACTO: EXTRACCIÓN Y AISLAMIENTO DE MATRIZ DE PÍXELES
        ========================================================================= */
     async function procesarCartonesDesdePdf(input) {
-      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
-        bloquearSistemaPorFecha();
-        alert("El tiempo de registro ha finalizado.");
-        return;
-      }
-
       let archivo = input.files[0];
       if (!archivo) return;
 
       let contenedorResultado = document.getElementById("resultadoQR");
       let mainEl = document.getElementById("contenidoPrincipal");
-      
       mainEl.classList.add("loading");
-      contenedorResultado.innerText = "📄 Localizando y recortando códigos QR en el PDF...";
+      contenedorResultado.innerText = "🔍 Ejecutando análisis por aislamiento de vector de píxeles...";
 
       try {
         let arrayBuffer = await archivo.arrayBuffer();
         let pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let totalPaginas = pdf.numPages;
-        let qrEncontradosEnPdf = 0;
+        let encontrados = 0;
 
         let canvas = document.getElementById("canvasPdfRender");
-        let ctx = canvas.getContext("2d");
+        let ctx = canvas.getContext("2d", { willReadFrequently: true });
+        let canvasLimpio = document.createElement("canvas");
+        let ctxLimpio = canvasLimpio.getContext("2d");
 
-        // Creamos un canvas virtual secundario para procesar el aislamiento del QR recortado
-        let canvasRecorte = document.createElement("canvas");
-        let ctxRecorte = canvasRecorte.getContext("2d");
-
-        for (let paginaNum = 1; paginaNum <= totalPaginas; paginaNum++) {
-          contenedorResultado.innerText = `Buscando QR en página ${paginaNum} de ${totalPaginas}...`;
+        for (let p = 1; p <= totalPaginas; p++) {
+          contenedorResultado.innerText = `Procesando hoja ${p} de ${totalPaginas}...`;
+          let pagina = await pdf.getPage(p);
           
-          let pagina = await pdf.getPage(paginaNum);
-          let escalaRender = 2.5; // Alta definición controlada para no congelar navegadores móviles
-          let vista = pagina.getViewport({ scale: escalaRender });
-
+          // Renderizamos a escala 3.5x para máxima nitidez subpíxel del QR
+          let vista = pagina.getViewport({ scale: 3.5 });
           canvas.width = vista.width;
           canvas.height = vista.height;
+          await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
 
-          let renderContext = { canvasContext: ctx, viewport: vista };
-          await pagina.render(renderContext).promise;
-
-          // 1. OBTENER MAPA DE PÍXELES CRUDOS PARA IDENTIFICAR PATRONES DE ESQUINA
           let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           
-          // Localización geométrica del QR usando el localizador matemático jsQR
-          let codigoLocalizado = jsQR(imgData.data, imgData.width, imgData.height, {
-            inversionAttempts: "dontInvert",
-          });
+          // Fase 1: Localizar los patrones de posición del QR ignorando los textos colindantes
+          let localizador = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
 
-          if (codigoLocalizado) {
-            // 2. CÁLCULO DE CAJA DE LÍMITES (BOUNDING BOX) CON MARGEN DE SEGURIDAD (QUIET ZONE)
-            let loc = codigoLocalizado.location;
-            let xs = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomRightCorner.x, loc.bottomLeftCorner.x];
-            let ys = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomRightCorner.y, loc.bottomLeftCorner.y];
+          if (localizador) {
+            let loc = localizador.location;
+            let puntosX = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomRightCorner.x, loc.bottomLeftCorner.x];
+            let puntosY = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomRightCorner.y, loc.bottomLeftCorner.y];
             
-            let minX = Math.min(...xs), maxX = Math.max(...xs);
-            let minY = Math.min(...ys), maxY = Math.max(...ys);
-
-            let qrAncho = maxX - minX;
-            let qrAlto = maxY - minY;
-
-            // Agregamos un margen limpio del 15% para que los bordes del QR no se corten
-            let margenX = qrAncho * 0.15;
-            let margenY = qrAlto * 0.15;
-
-            let xRecorte = Math.max(0, minX - margenX);
-            let yRecorte = Math.max(0, minY - margenY);
-            let anchoRecorte = Math.min(canvas.width - xRecorte, qrAncho + (margenX * 2));
-            let altoRecorte = Math.min(canvas.height - yRecorte, qrAlto + (margenY * 2));
-
-            // 3. TRANSFERIR EL FRAGMENTO EXTRAÍDO AL CANVAS DE RECORTE
-            canvasRecorte.width = anchoRecorte;
-            canvasRecorte.height = altoRecorte;
+            let minX = Math.min(...puntosX), maxX = Math.max(...puntosX);
+            let minY = Math.min(...puntosY), maxY = Math.max(...puntosY);
             
-            ctxRecorte.drawImage(
-              canvas, 
-              xRecorte, yRecorte, anchoRecorte, altoRecorte, // Coordenadas del PDF original
-              0, 0, anchoRecorte, altoRecorte               // Ubicación en el lienzo nuevo
-            );
+            let anchoQr = maxX - minX;
+            let altoQr = maxY - minY;
 
-            // 4. FILTRO DE AUTO-NITIDEZ EXTREMA (Binarización Umbralizada)
-            let imgDataRecorte = ctxRecorte.getImageData(0, 0, canvasRecorte.width, canvasRecorte.height);
+            // Añadimos una Zona de Silencio (Quiet Zone) blanca artificial del 18% para aislarlo de las tablas
+            let margenX = anchoQr * 0.18;
+            let margenY = altoQr * 0.18;
+
+            let xCorte = Math.max(0, minX - margenX);
+            let yCorte = Math.max(0, minY - margenY);
+            let anchoCorte = Math.min(canvas.width - xCorte, anchoQr + (margenX * 2));
+            let altoCorte = Math.min(canvas.height - yCorte, altoQr + (margenY * 2));
+
+            canvasLimpio.width = anchoCorte;
+            canvasLimpio.height = altoCorte;
+            ctxLimpio.drawImage(canvas, xCorte, yCorte, anchoCorte, altoCorte, 0, 0, anchoCorte, altoCorte);
+
+            // Fase 2: Umbralización adaptativa digital (Filtro Binarizado Puro)
+            let imgDataRecorte = ctxLimpio.getImageData(0, 0, canvasLimpio.width, canvasLimpio.height);
             let pixeles = imgDataRecorte.data;
-
             for (let i = 0; i < pixeles.length; i += 4) {
-              // Convertimos a escala de grises mediante peso lumínico exacto
-              let brillo = 0.299 * pixeles[i] + 0.587 * pixeles[i+1] + 0.114 * pixeles[i+2];
-              // Si el píxel tiende a gris/oscuro lo forzamos a negro absoluto, si es claro a blanco absoluto
-              let colorNitido = brillo < 130 ? 0 : 255; 
-              pixeles[i] = colorNitido;     // R
-              pixeles[i+1] = colorNitido;   // G
-              pixeles[i+2] = colorNitido;   // B
+              // Convertimos a escala de grises de alta luminancia
+              let gris = 0.2126 * pixeles[i] + 0.7152 * pixeles[i+1] + 0.0722 * pixeles[i+2];
+              // Si el pixel es más oscuro que un gris medio, lo hacemos negro absoluto, sino blanco puro.
+              let binario = gris < 135 ? 0 : 255;
+              pixeles[i] = pixeles[i+1] = pixeles[i+2] = binario;
             }
-            ctxRecorte.putImageData(imgDataRecorte, 0, 0);
+            ctxLimpio.putImageData(imgDataRecorte, 0, 0);
 
-            // 5. SEGUNDA LECTURA DIRECTA SOBRE LA IMAGEN LIMPIA AISLADA
-            let imgDataNitida = ctxRecorte.getImageData(0, 0, canvasRecorte.width, canvasRecorte.height);
-            let qrAisladoYProcesado = jsQR(imgDataNitida.data, imgDataNitida.width, imgDataNitida.height);
+            // Fase 3: Lectura final sobre el aislamiento perfecto en B/N
+            let lecturaFinal = jsQR(imgDataRecorte.data, imgDataRecorte.width, imgDataRecorte.height);
+            let textoEncontrado = lecturaFinal ? lecturaFinal.data : localizador.data;
 
-            let textoFinalQR = qrAisladoYProcesado ? qrAisladoYProcesado.data : codigoLocalizado.data;
-
-            if (textoFinalQR) {
-              let codigoLimpio = procesarFormato(textoFinalQR);
-              if (!listaQR.includes(codigoLimpio)) {
-                listaQR.push(codigoLimpio);
-                qrEncontradosEnPdf++;
-              }
+            if (textoEncontrado) {
+              let limpio = procesarFormato(textoEncontrado);
+              if (!listaQR.includes(limpio)) { listaQR.push(limpio); encontrados++; }
             }
-          } else {
-            console.log(`Página ${paginaNum}: No se detectaron patrones de localización de QR.`);
           }
         }
 
-        if (qrEncontradosEnPdf > 0) {
+        if (encontrados > 0) {
           emitirSonidoExito();
-          contenedorResultado.innerText = `🎉 ¡Éxito! Se añadieron ${qrEncontradosEnPdf} cartones mediante aislamiento y auto-recorte.`;
+          contenedorResultado.innerText = `🎉 ¡Completado! Se importaron ${encontrados} cartones con limpieza por vector.`;
           contenedorResultado.classList.add("scan-exito");
-          setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 2500);
+          setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 2000);
           actualizarTabla();
         } else {
-          alert("⚠️ El sistema no pudo segmentar o aislar los códigos QR.\n\nVerifica que las tablas de juego no obstruyan los tres cuadrados de las esquinas del código QR.");
-          contenedorResultado.innerText = "Esperando acción o escaneo...";
+          alert("⚠️ No se pudieron aislar los QR automáticamente.\n\nPor favor, verifica que el archivo no contenga imágenes comprimidas o con baja calidad de origen.");
         }
-
-      } catch (err) {
-        alert("Error de procesamiento en la segmentación: " + err.message);
-        contenedorResultado.innerText = "Error leyendo archivo.";
-      } finally {
-        mainEl.classList.remove("loading");
-        input.value = ""; 
-      }
+      } catch (err) { alert("Error: " + err.message); } 
+      finally { mainEl.classList.remove("loading"); input.value = ""; }
     }
 
     function actualizarTabla() {
       let tbody = document.querySelector("#tabla tbody");
       tbody.innerHTML = "";
-      let ciudadInput = document.getElementById("ciudad").value.trim() || "---";
-      let direccionInput = document.getElementById("direccion").value.trim() || "---";
+      let ciudad = document.getElementById("ciudad").value.trim() || "---";
+      let direccion = document.getElementById("direccion").value.trim() || "---";
 
-      if(listaQR.length === 0) {
+      if (listaQR.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
         actualizarContador();
         return;
       }
-
-      listaQR.forEach((qr, index) => {
+      listaQR.forEach((qr, idx) => {
         let fila = document.createElement("tr");
-        let esDuplicado = cartonesDuplicados.includes(qr);
-        if(esDuplicado) fila.classList.add("fila-duplicada");
-
-        fila.innerHTML = `
-          <td>${index + 1}</td>
-          <td><strong>${qr}</strong></td>
-          <td>${ciudadInput} - ${direccionInput}</td>
-          <td>
-            <button class="btn-eliminar" onclick="eliminarCarton(${index})">Eliminar</button>
-            ${esDuplicado ? '<span class="alerta-duplicado">⚠️ DUPLICADO</span>' : ''}
-          </td>
-        `;
+        if (cartonesDuplicados.includes(qr)) fila.classList.add("fila-duplicada");
+        fila.innerHTML = `<td>${idx + 1}</td><td><strong>${qr}</strong></td><td>${ciudad} - ${direccion}</td><td><button class="btn-eliminar" onclick="eliminarCarton(${idx})">Eliminar</button></td>`;
         tbody.appendChild(fila);
       });
       actualizarContador();
     }
 
-    function eliminarCarton(index) {
-      let qrRemovido = listaQR[index];
-      listaQR.splice(index, 1);
-      cartonesDuplicados = cartonesDuplicados.filter(item => item !== qrRemovido);
+    function eliminarCarton(idx) {
+      listaQR.splice(idx, 1);
       actualizarTabla();
     }
 
@@ -489,106 +351,36 @@
     document.getElementById("direccion").addEventListener("input", actualizarTabla);
 
     async function enviarAlBackend() {
-      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
-        bloquearSistemaPorFecha();
-        alert("El tiempo de registro de cartones ha expirado.");
-        return;
-      }
-
       let nombre = document.getElementById("nombre").value.trim();
       let celular = document.getElementById("celular").value.trim();
       let correo = document.getElementById("correo").value.trim();
       let ciudad = document.getElementById("ciudad").value.trim();
       let direccion = document.getElementById("direccion").value.trim();
-      let vendedor = document.getElementById("vendedor").value.trim() || "WEB";
       let codigoIngresado = document.getElementById("codigoCanal").value.trim().toUpperCase();
 
-      if (!nombre || !celular || !correo || !ciudad || !direccion || !codigoIngresado) {
-        alert("Por favor complete todos los campos requeridos.");
-        return;
-      }
-
-      if (listaQR.length === 0) {
-        alert("Escanee al menos un cartón QR.");
-        return;
+      if (!nombre || !celular || !correo || !ciudad || !direccion || !codigoIngresado || listaQR.length === 0) {
+        alert("Campos incompletos o lista vacía."); return;
       }
 
       let mainEl = document.getElementById("contenidoPrincipal");
-      let btn = document.getElementById("btnRegistrar");
       mainEl.classList.add("loading");
-      btn.innerText = "Verificando códigos...";
-
-      cartonesDuplicados = [];
 
       try {
-        const { data: configCanal, error: errConfig } = await _supabase
-          .from('configuracion_sistema')
-          .select('valor')
-          .eq('clave', 'codigo_canal_whatsapp')
-          .maybeSingle();
-
-        if (errConfig) throw errConfig;
-
+        const { data: configCanal } = await _supabase.from('configuracion_sistema').select('valor').eq('clave', 'codigo_canal_whatsapp').maybeSingle();
         if (!configCanal || codigoIngresado !== configCanal.valor.toUpperCase()) {
-          alert("❌ El Código Secreto del Canal de WhatsApp es incorrecto.");
-          mainEl.classList.remove("loading");
-          btn.innerText = "Registrar Cartones en el Sistema";
-          return;
-        }
-
-        const { data: existentes, error: errConteo } = await _supabase
-          .from('registros_bingo')
-          .select('id')
-          .eq('telefono', celular);
-
-        if (errConteo) throw errConteo;
-
-        if (existentes.length + listaQR.length > CONFIG_SISTEMA.limite_cartones) {
-          alert(`¡Cupo Excedido! Límite actual de máximo ${CONFIG_SISTEMA.limite_cartones}.`);
-          mainEl.classList.remove("loading");
-          btn.innerText = "Registrar Cartones en el Sistema";
-          return;
-        }
-
-        const { data: yaRegistrados, error: errValidacion } = await _supabase
-          .from('registros_bingo')
-          .select('carton')
-          .in('carton', listaQR);
-
-        if (errValidacion) throw errValidacion;
-
-        if (yaRegistrados && yaRegistrados.length > 0) {
-          cartonesDuplicados = yaRegistrados.map(row => row.carton);
-          actualizarTabla();
-          alert("¡Atención! Se detectaron cartones duplicados en uso por otra persona.");
-          mainEl.classList.remove("loading");
-          btn.innerText = "Registrar Cartones en el Sistema";
-          return;
+          alert("❌ Código de canal incorrecto."); return;
         }
 
         let ubicacionCompleta = `${ciudad} - ${direccion}`;
-        let filasAInsertar = listaQR.map(serie => ({
-          carton: serie, nombre: nombre, correo: correo, telefono: celular,
-          ciudad: ubicacionCompleta, vendedor: vendedor, ip_publica: ipPublica,
-          gps_latitud: geoLatitud ? geoLatitud.toString() : "", gps_longitud: geoLongitud ? geoLongitud.toString() : ""
-        }));
+        let filas = listaQR.map(serie => ({ carton: serie, nombre: nombre, correo: correo, telefono: celular, ciudad: ubicacionCompleta, vendedor: "WEB", ip_publica: ipPublica }));
 
-        const { error: errInsert } = await _supabase.from('registros_bingo').insert(filasAInsertar);
-        if (errInsert) throw errInsert;
+        const { error } = await _supabase.from('registros_bingo').insert(filas);
+        if (error) throw error;
 
-        alert("¡Todos tus cartones han sido registrados exitosamente!");
-        listaQR = [];
-        actualizarTabla();
-        document.getElementById("nombre").value = "";
-        document.getElementById("celular").value = "";
-        document.getElementById("correo").value = "";
-        document.getElementById("ciudad").value = "";
-        document.getElementById("direccion").value = "";
-        document.getElementById("vendedor").value = "";
-        document.getElementById("codigoCanal").value = "";
-
-      } catch (err) { alert("Error: " + err.message); } 
-      finally { mainEl.classList.remove("loading"); btn.innerText = "Registrar Cartones en el Sistema"; }
+        alert("¡Cartones subidos con éxito!");
+        listaQR = []; actualizarTabla();
+      } catch (e) { alert(e.message); } 
+      finally { mainEl.classList.remove("loading"); }
     }
   </script>
 </body>
