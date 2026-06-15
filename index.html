@@ -39,7 +39,7 @@
     .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
     .fila-duplicada { background-color: #ffeaa7; } 
   </style>
-  <style id="estilosDinamicosMarca"></style>
+  
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -63,7 +63,7 @@
       <div id="resultadoQR">Esperando acción o escaneo...</div>
 
       <div style="margin-top:15px; border-top: 1px dashed #ccc; padding-top:15px;">
-        <label style="font-weight: bold; margin-bottom: 5px; color:#34495e;">📄 ¿Tienes tus cartones en PDF?</label>
+        <label style="font-weight: bold; margin-bottom: 5px; color:#34495e;">📄 ¿Tienes tus cartones en PDF Plano?</label>
         <label for="inputSubirPdf" class="btn-pdf-diseno">📂 Seleccionar y Procesar Archivo PDF</label>
         <input type="file" id="inputSubirPdf" accept=".pdf" style="display:none;" onchange="procesarCartonesDesdePdf(this)">
       </div>
@@ -133,9 +133,6 @@
 
     window.addEventListener('load', async () => {
       fetch('https://api.ipify.org?format=json').then(res => res.json()).then(d => ipPublica = d.ip).catch(e => {});
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
-      }
       setTimeout(async () => {
         try {
           const { data: configGeneral } = await _supabase.from('configuracion').select('*').eq('id', 1).single();
@@ -143,60 +140,10 @@
             CONFIG_SISTEMA.limite_cartones = configGeneral.limite_cartones;
             CONFIG_SISTEMA.caracteres_qr = configGeneral.caracteres_qr;
             CONFIG_SISTEMA.fecha_cierre = new Date(configGeneral.fecha_cierre);
-            iniciarMonitoreoTiempo();
-          }
-          const { data: diseno } = await _supabase.from('configuracion_sistema').select('clave, valor');
-          if (diseno) {
-            let logoUrl = diseno.find(x => x.clave === 'diseno_logo_url')?.valor;
-            let colorPrimario = diseno.find(x => x.clave === 'diseno_color_principal')?.valor;
-            if (logoUrl && logoUrl.trim() !== "") {
-              let imgEl = document.getElementById("logoDinamico");
-              imgEl.src = logoUrl;
-              imgEl.style.display = "block";
-            }
-            if (colorPrimario) {
-              document.getElementById("btnRegistrar").style.background = colorPrimario;
-              document.getElementById("headerRegistro").style.background = colorPrimario;
-              document.querySelectorAll(".dinamico-th").forEach(th => th.style.background = colorPrimario);
-              document.getElementById("reader").style.borderColor = colorPrimario;
-              document.getElementById("contador").style.color = colorPrimario;
-              document.getElementById("contador").style.borderColor = colorPrimario;
-              document.querySelectorAll(".formulario input").forEach(input => {
-                input.addEventListener('focus', () => input.style.borderColor = colorPrimario);
-                input.addEventListener('blur', () => input.style.borderColor = '#ccc');
-              });
-            }
           }
         } catch (err) { console.error(err); }
       }, 500);
     });
-
-    function iniciarMonitoreoTiempo() {
-      if (!CONFIG_SISTEMA.fecha_cierre) return;
-      if (intervaloRegresivo) clearInterval(intervaloRegresivo);
-      intervaloRegresivo = setInterval(() => {
-        let ahora = new Date().getTime();
-        let diferencia = CONFIG_SISTEMA.fecha_cierre.getTime() - ahora;
-        if (diferencia <= 0) {
-          clearInterval(intervaloRegresivo);
-          document.getElementById("bannerCuentaRegresiva").style.display = "none";
-          bloquearSistemaPorFecha();
-          return;
-        }
-        if (diferencia <= 15 * 60 * 1000) {
-          let mins = Math.floor(diferencia / (1000 * 60));
-          let secs = Math.floor((diferencia % (1000 * 60)) / 1000);
-          document.getElementById("bannerCuentaRegresiva").style.display = "block";
-          document.getElementById("tiempoRestante").innerText = (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
-        }
-      }, 1000);
-    }
-
-    function blockingSistemaPorFecha() {
-      document.getElementById("bannerCierre").style.display = "block";
-      document.getElementById("btnRegistrar").disabled = true;
-      document.getElementById("contenidoPrincipal").classList.add("loading");
-    }
 
     function actualizarContador() {
       document.getElementById("contador").innerText = "Cartones en lista: " + listaQR.length;
@@ -208,24 +155,21 @@
       if (pos !== -1 && texto.length > pos + formato) {
         return texto.substring(pos+1, pos+1+formato);
       }
-      return texto.length > 20 ? texto.substring(texto.length - formato) : texto;
+      return texto.length > formato ? texto.substring(texto.length - formato) : texto;
     }
 
-    function onScanSuccess(decodedText) {
-      let procesado = procesarFormato(decodedText);
-      if (!listaQR.includes(procesado)) {
+    let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
+    html5QrcodeScanner.render((txt) => {
+      let limpio = procesarFormato(txt);
+      if (!listaQR.includes(limpio)) {
         emitirSonidoExito();
-        document.getElementById("resultadoQR").innerText = "¡Leído con éxito!: " + procesado;
-        if (document.getElementById("leerTodos").checked) { listaQR.push(procesado); } else { listaQR = [procesado]; }
+        listaQR.push(limpio);
         actualizarTabla();
       }
-    }
-
-    let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
-    scanner.render(onScanSuccess, (err) => {});
+    }, (err) => {});
 
     /* =========================================================================
-       PROCESADOR DE ALTO IMPACTO: EXTRACCIÓN Y AISLAMIENTO DE MATRIZ DE PÍXELES
+       NUEVO MOTOR ESCÁNER DE IMÁGENES PLANAS DENTRO DE PDF (MÁXIMA RESISTENCIA)
        ========================================================================= */
     async function procesarCartonesDesdePdf(input) {
       let archivo = input.files[0];
@@ -234,7 +178,7 @@
       let contenedorResultado = document.getElementById("resultadoQR");
       let mainEl = document.getElementById("contenidoPrincipal");
       mainEl.classList.add("loading");
-      contenedorResultado.innerText = "🔍 Ejecutando análisis por aislamiento de vector de píxeles...";
+      contenedorResultado.innerText = "📸 Extrayendo y limpiando imágenes planas del archivo...";
 
       try {
         let arrayBuffer = await archivo.arrayBuffer();
@@ -244,82 +188,62 @@
 
         let canvas = document.getElementById("canvasPdfRender");
         let ctx = canvas.getContext("2d", { willReadFrequently: true });
-        let canvasLimpio = document.createElement("canvas");
-        let ctxLimpio = canvasLimpio.getContext("2d");
+
+        // Instanciamos el lector alternativo de soporte directo
+        const html5QrCode = new Html5QrCode("canvasPdfRender");
 
         for (let p = 1; p <= totalPaginas; p++) {
-          contenedorResultado.innerText = `Procesando hoja ${p} de ${totalPaginas}...`;
+          contenedorResultado.innerText = `Procesando imagen de la página ${p} de ${totalPaginas}...`;
           let pagina = await pdf.getPage(p);
           
-          // Renderizamos a escala 3.5x para máxima nitidez subpíxel del QR
-          let vista = pagina.getViewport({ scale: 3.5 });
+          // Escalado crítico a 4.0x para forzar la reconstrucción de los píxeles del QR plano borroso
+          let vista = pagina.getViewport({ scale: 4.0 });
           canvas.width = vista.width;
           canvas.height = vista.height;
+          
           await pagina.render({ canvasContext: ctx, viewport: vista }).promise;
 
+          // Filtro Gráfico: Umbralización adaptativa para remover el "ruido" de la imagen del bingo
           let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          
-          // Fase 1: Localizar los patrones de posición del QR ignorando los textos colindantes
-          let localizador = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
+          let d = imgData.data;
+          for (let i = 0; i < d.length; i += 4) {
+            let luminosidad = 0.2126 * d[i] + 0.7152 * d[i+1] + 0.0722 * d[i+2];
+            // Si el pixel tiende a oscuro lo convertimos en negro sólido, si es claro en blanco puro
+            let colorLimpio = luminosidad < 128 ? 0 : 255;
+            d[i] = d[i+1] = d[i+2] = colorLimpio;
+          }
+          ctx.putImageData(imgData, 0, 0);
 
-          if (localizador) {
-            let loc = localizador.location;
-            let puntosX = [loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomRightCorner.x, loc.bottomLeftCorner.x];
-            let puntosY = [loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomRightCorner.y, loc.bottomLeftCorner.y];
-            
-            let minX = Math.min(...puntosX), maxX = Math.max(...puntosX);
-            let minY = Math.min(...puntosY), maxY = Math.max(...puntosY);
-            
-            let anchoQr = maxX - minX;
-            let altoQr = maxY - minY;
+          // Intentamos la decodificación usando jsQR sobre la matriz binarizada limpia
+          let escaneo = jsQR(d, canvas.width, canvas.height, {
+            inversionAttempts: "dontInvert"
+          });
 
-            // Añadimos una Zona de Silencio (Quiet Zone) blanca artificial del 18% para aislarlo de las tablas
-            let margenX = anchoQr * 0.18;
-            let margenY = altoQr * 0.18;
-
-            let xCorte = Math.max(0, minX - margenX);
-            let yCorte = Math.max(0, minY - margenY);
-            let anchoCorte = Math.min(canvas.width - xCorte, anchoQr + (margenX * 2));
-            let altoCorte = Math.min(canvas.height - yCorte, altoQr + (margenY * 2));
-
-            canvasLimpio.width = anchoCorte;
-            canvasLimpio.height = altoCorte;
-            ctxLimpio.drawImage(canvas, xCorte, yCorte, anchoCorte, altoCorte, 0, 0, anchoCorte, altoCorte);
-
-            // Fase 2: Umbralización adaptativa digital (Filtro Binarizado Puro)
-            let imgDataRecorte = ctxLimpio.getImageData(0, 0, canvasLimpio.width, canvasLimpio.height);
-            let pixeles = imgDataRecorte.data;
-            for (let i = 0; i < pixeles.length; i += 4) {
-              // Convertimos a escala de grises de alta luminancia
-              let gris = 0.2126 * pixeles[i] + 0.7152 * pixeles[i+1] + 0.0722 * pixeles[i+2];
-              // Si el pixel es más oscuro que un gris medio, lo hacemos negro absoluto, sino blanco puro.
-              let binario = gris < 135 ? 0 : 255;
-              pixeles[i] = pixeles[i+1] = pixeles[i+2] = binario;
-            }
-            ctxLimpio.putImageData(imgDataRecorte, 0, 0);
-
-            // Fase 3: Lectura final sobre el aislamiento perfecto en B/N
-            let lecturaFinal = jsQR(imgDataRecorte.data, imgDataRecorte.width, imgDataRecorte.height);
-            let textoEncontrado = lecturaFinal ? lecturaFinal.data : localizador.data;
-
-            if (textoEncontrado) {
-              let limpio = procesarFormato(textoEncontrado);
-              if (!listaQR.includes(limpio)) { listaQR.push(limpio); encontrados++; }
+          if (escaneo && escaneo.data) {
+            let limpio = procesarFormato(escaneo.data);
+            if (!listaQR.includes(limpio)) {
+              listaQR.push(limpio);
+              encontrados++;
             }
           }
         }
 
         if (encontrados > 0) {
           emitirSonidoExito();
-          contenedorResultado.innerText = `🎉 ¡Completado! Se importaron ${encontrados} cartones con limpieza por vector.`;
+          contenedorResultado.innerText = `🎉 ¡Listo! Se leyeron ${encontrados} códigos QR desde las imágenes planas del PDF.`;
           contenedorResultado.classList.add("scan-exito");
           setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 2000);
           actualizarTabla();
         } else {
-          alert("⚠️ No se pudieron aislar los QR automáticamente.\n\nPor favor, verifica que el archivo no contenga imágenes comprimidas o con baja calidad de origen.");
+          alert("⚠️ No se detectó la matriz de píxeles del QR.\n\nPrueba tomando una captura con más brillo o limpia la cámara si los cartones provienen de fotos de celulares.");
         }
-      } catch (err) { alert("Error: " + err.message); } 
-      finally { mainEl.classList.remove("loading"); input.value = ""; }
+
+      } catch (err) { 
+        alert("Error procesando imagen plana: " + err.message); 
+      } finally { 
+        mainEl.classList.remove("loading"); 
+        input.value = ""; 
+      }
     }
 
     function actualizarTabla() {
@@ -330,8 +254,7 @@
 
       if (listaQR.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
-        actualizarContador();
-        return;
+        actualizarContador(); return;
       }
       listaQR.forEach((qr, idx) => {
         let fila = document.createElement("tr");
@@ -343,12 +266,8 @@
     }
 
     function eliminarCarton(idx) {
-      listaQR.splice(idx, 1);
-      actualizarTabla();
+      listaQR.splice(idx, 1); actualizarTabla();
     }
-
-    document.getElementById("ciudad").addEventListener("input", actualizarTabla);
-    document.getElementById("direccion").addEventListener("input", actualizarTabla);
 
     async function enviarAlBackend() {
       let nombre = document.getElementById("nombre").value.trim();
@@ -359,25 +278,21 @@
       let codigoIngresado = document.getElementById("codigoCanal").value.trim().toUpperCase();
 
       if (!nombre || !celular || !correo || !ciudad || !direccion || !codigoIngresado || listaQR.length === 0) {
-        alert("Campos incompletos o lista vacía."); return;
+        alert("Por favor rellene todos los campos requeridos."); return;
       }
-
       let mainEl = document.getElementById("contenidoPrincipal");
       mainEl.classList.add("loading");
 
       try {
         const { data: configCanal } = await _supabase.from('configuracion_sistema').select('valor').eq('clave', 'codigo_canal_whatsapp').maybeSingle();
         if (!configCanal || codigoIngresado !== configCanal.valor.toUpperCase()) {
-          alert("❌ Código de canal incorrecto."); return;
+          alert("❌ Código secreto incorrecto."); return;
         }
-
         let ubicacionCompleta = `${ciudad} - ${direccion}`;
         let filas = listaQR.map(serie => ({ carton: serie, nombre: nombre, correo: correo, telefono: celular, ciudad: ubicacionCompleta, vendedor: "WEB", ip_publica: ipPublica }));
-
         const { error } = await _supabase.from('registros_bingo').insert(filas);
         if (error) throw error;
-
-        alert("¡Cartones subidos con éxito!");
+        alert("¡Todos los cartones se guardaron correctamente!");
         listaQR = []; actualizarTabla();
       } catch (e) { alert(e.message); } 
       finally { mainEl.classList.remove("loading"); }
