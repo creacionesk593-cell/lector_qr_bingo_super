@@ -132,7 +132,7 @@
   <canvas id="canvasPdfRender" style="display:none;"></canvas>
 
   <script>
-    // Sincronizar ruta interna para PDF.js
+    // Configurar ruta interna para PDF.js de Mozilla
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     let CONFIG_SISTEMA = { limite_cartones: 5, fecha_cierre: null, caracteres_qr: 6 };
@@ -246,7 +246,7 @@
           let minutosRestantes = Math.floor(diferenciaMilisegundos / (1000 * 60));
           let segundosRestantes = Math.floor((diferenciaMilisegundos % (1000 * 60)) / 1000);
 
-          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutesRestantes;
+          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
           let segundosTxt = segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes;
 
           let bannerRegresivo = document.getElementById("bannerCuentaRegresiva");
@@ -309,7 +309,7 @@
     scanner.render(onScanSuccess, (err) => {});
 
     /* =========================================================================
-       NUEVA FUNCIÓN: PROCESAR CARTONES DESDE ARCHIVOS PDF SELECCIONADOS
+       FUNCIÓN DE EXTRACCIÓN AVANZADA DE QR CON FILTRO UMBRAL BINARIO PARA PDF
        ========================================================================= */
     async function procesarCartonesDesdePdf(input) {
       if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
@@ -325,7 +325,7 @@
       let mainEl = document.getElementById("contenidoPrincipal");
       
       mainEl.classList.add("loading");
-      contenedorResultado.innerText = "📄 Leyendo documento PDF, por favor espere...";
+      contenedorResultado.innerText = "📄 Analizando posiciones en el PDF a alta resolución...";
 
       try {
         let arrayBuffer = await archivo.arrayBuffer();
@@ -337,13 +337,14 @@
         let canvas = document.getElementById("canvasPdfRender");
         let ctx = canvas.getContext("2d");
 
-        // Recorrer cada una de las páginas del PDF
         for (let paginaNum = 1; paginaNum <= totalPaginas; paginaNum++) {
-          contenedorResultado.innerText = `Procesando página ${paginaNum} de ${totalPaginas}...`;
+          contenedorResultado.innerText = `Escaneando página ${paginaNum} de ${totalPaginas}...`;
           
           let pagina = await pdf.getPage(paginaNum);
-          let optimizacionEscala = 2.0; // Multiplicador de escala para garantizar nitidez del QR
-          let vista = pagina.getViewport({ scale: optimizacionEscala });
+          
+          // Escalamos a 2.5 para procesar rápidamente sin colgar los celulares de los usuarios
+          let escalaRender = 2.5; 
+          let vista = pagina.getViewport({ scale: escalaRender });
 
           canvas.width = vista.width;
           canvas.height = vista.height;
@@ -351,43 +352,69 @@
           let renderContext = { canvasContext: ctx, viewport: vista };
           await pagina.render(renderContext).promise;
 
-          // Conversión de la página dibujada a un formato de imagen procesable
-          let imagenMuestraBase64 = canvas.toDataURL("image/jpeg");
+          // Intento 1: Escaneo plano directo
+          let imagenMuestraBase64 = canvas.toDataURL("image/jpeg", 0.85);
 
-          // Pasar la imagen convertida al motor de escaneo nativo
           try {
             let resultadoImagen = await html5QrCodeScannerInstance.scanImage(imagenMuestraBase64);
             if (resultadoImagen) {
               let codigoLimpio = procesarFormato(resultadoImagen);
-              
               if (!listaQR.includes(codigoLimpio)) {
                 listaQR.push(codigoLimpio);
                 qrEncontradosEnPdf++;
               }
+              continue; 
             }
-          } catch (errorScan) {
-            // Si una página en específico no contiene códigos legibles, continúa sin caerse
-            console.log(`Página ${paginaNum} escaneada sin códigos QR legibles.`);
+          } catch (errorFirstScan) {
+            // Intento 2 (Solución definitiva): Si falla, aislamos el QR eliminando el diseño de fondo
+            // Aplicamos un umbral (Thresholding) para convertir todo el canvas a blanco y negro absoluto
+            try {
+              let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              let datos = imgData.data;
+              
+              for (let i = 0; i < datos.length; i += 4) {
+                // Multiplicadores estándar de brillo percibido humano
+                let brillo = 0.3 * datos[i] + 0.59 * datos[i+1] + 0.11 * datos[i+2];
+                let k = brillo < 125 ? 0 : 255; // Píxeles grises/oscuros van a negro puro (0), claros a blanco (255)
+                datos[i] = k;     // Rojo
+                datos[i+1] = k;   // Verde
+                datos[i+2] = k;   // Azul
+              }
+              ctx.putImageData(imgData, 0, 0);
+              
+              let imagenContrasteBase64 = canvas.toDataURL("image/jpeg", 0.9);
+              let resultadoContraste = await html5QrCodeScannerInstance.scanImage(imagenContrasteBase64);
+              
+              if (resultadoContraste) {
+                let codigoLimpio = procesarFormato(resultadoContraste);
+                if (!listaQR.includes(codigoLimpio)) {
+                  listaQR.push(codigoLimpio);
+                  qrEncontradosEnPdf++;
+                }
+              }
+            } catch (errorSecondScan) {
+              console.log(`Página ${paginaNum}: No se detectaron patrones QR viables.`);
+            }
           }
         }
 
         if (qrEncontradosEnPdf > 0) {
           emitirSonidoExito();
-          contenedorResultado.innerText = `🎉 ¡Éxito! Se añadieron ${qrEncontradosEnPdf} cartones nuevos desde el PDF.`;
+          contenedorResultado.innerText = `🎉 ¡Éxito! Se añadieron ${qrEncontradosEnPdf} cartones desde el PDF.`;
           contenedorResultado.classList.add("scan-exito");
           setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 2500);
           actualizarTabla();
         } else {
-          alert("⚠️ No se detectaron códigos QR claros dentro del PDF.\n\nAsegúrate de que el documento contenga las imágenes de tus tablas impresas con buena nitidez.");
+          alert("⚠️ El sistema leyó el documento completo pero no encontró ningún código QR reconocible.\n\nAsegúrate de que los códigos QR no estén tapados por otros textos y mantengan un pequeño recuadro blanco a su alrededor.");
           contenedorResultado.innerText = "Esperando acción o escaneo...";
         }
 
       } catch (err) {
-        alert("Error al abrir el archivo PDF: " + err.message);
+        alert("Error de procesamiento en el PDF: " + err.message);
         contenedorResultado.innerText = "Error leyendo archivo.";
       } finally {
         mainEl.classList.remove("loading");
-        input.value = ""; // Limpiar el input para permitir volver a subir el mismo archivo si es necesario
+        input.value = ""; 
       }
     }
 
@@ -512,28 +539,4 @@
 
         let ubicacionCompleta = `${ciudad} - ${direccion}`;
         let filasAInsertar = listaQR.map(serie => ({
-          carton: serie, nombre: nombre, correo: correo, telefono: celular,
-          ciudad: ubicacionCompleta, vendedor: vendedor, ip_publica: ipPublica,
-          gps_latitud: geoLatitud ? geoLatitud.toString() : "", gps_longitud: geoLongitud ? geoLongitud.toString() : ""
-        }));
-
-        const { error: errInsert } = await _supabase.from('registros_bingo').insert(filasAInsertar);
-        if (errInsert) throw errInsert;
-
-        alert("¡Todos tus cartones han sido registrados exitosamente!");
-        listaQR = [];
-        actualizarTabla();
-        document.getElementById("nombre").value = "";
-        document.getElementById("celular").value = "";
-        document.getElementById("correo").value = "";
-        document.getElementById("ciudad").value = "";
-        document.getElementById("direccion").value = "";
-        document.getElementById("vendedor").value = "";
-        document.getElementById("codigoCanal").value = "";
-
-      } catch (err) { alert("Error: " + err.message); } 
-      finally { mainEl.classList.remove("loading"); btn.innerText = "Registrar Cartones en el Sistema"; }
-    }
-  </script>
-</body>
-</html>
+          carton: serie,
