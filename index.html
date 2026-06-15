@@ -9,24 +9,28 @@
     
     /* Cabecera dinámica controlada por marca */
     header { background: #4CAF50; color: white; padding: 15px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; flex-direction: column; align-items: center; gap: 10px; }
-    .header-logo { max-height: 80px; max-width: 180px; object-fit: contain; display: none; } /* Se muestra si hay URL válida */
+    .header-logo { max-height: 80px; max-width: 180px; object-fit: contain; display: none; } 
     header h2 { margin: 0; }
 
     main { padding: 20px; max-width: 600px; margin: auto; }
     
-    /* Lector QR con fondo claro */
-    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; }
+    /* Lector QR con fondo claro y transición */
+    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; transition: border-color 0.3s ease; }
     #reader video { width: 100% !important; object-fit: cover; }
     
     .formulario { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .formulario h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
     .formulario input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-    .formulario input:focus { border-color: #4CAF50; outline: none; }
+    .formulario input:focus { outline: none; }
     
     .banner-alerta { background: #ff7675; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; }
     
-    /* Botón dinámico configurable */
-    button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
+    /* BANNER DE CUENTA REGRESIVA (15 Minutos antes) */
+    .banner-cuenta-regresiva { background: #ff9f43; color: white; padding: 12px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; animation: parpadeo 1.5s infinite; }
+    @keyframes parpadeo { 0% { opacity: 0.9; } 50% { opacity: 1; background: #ee5253; } 100% { opacity: 0.9; } }
+
+    /* Botones configurables */
+    button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s, filter 0.2s; margin-top: 10px; }
     button:hover { filter: brightness(0.9); }
     button:disabled { background: #cccccc; cursor: not-allowed; }
     
@@ -37,23 +41,25 @@
     label { display: flex; align-items: center; margin: 10px 0; font-weight: 500; cursor: pointer; }
     label input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; }
     
-    /* Animación y transición de color para el cuadro QR */
+    /* Cuadro de texto QR */
     #resultadoQR { margin-top: 15px; padding: 12px; background: #eef2f7; border-radius: 6px; text-align: center; font-size: 0.95rem; font-weight: bold; transition: all 0.3s ease; border: 1px solid transparent; }
     .scan-exito { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; transform: scale(1.02); }
     
-    /* TEXTO DE CONTADOR GRANDE Y RELLENO */
-    #contador { margin-top: 15px; font-size: 24px; color: #27ae60; font-weight: 800; text-align: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px dashed #4CAF50; letter-spacing: 0.5px; }
+    /* TEXTO DE CONTADOR GRANDE */
+    #contador { margin-top: 15px; font-size: 24px; color: #27ae60; font-weight: 800; text-align: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px dashed #4CAF50; letter-spacing: 0.5px; transition: all 0.3s ease; }
     
-    .loading { opacity: 0.5; pointer-events: none; }
+    /* Capa de carga */
+    .loading { opacity: 0.5; pointer-events: none; position: relative; }
     
-    /* Botón rojo de eliminar cartón */
+    /* Botón rojo de eliminar */
     .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; color: white; border: none; cursor: pointer; }
     .btn-eliminar:hover { background: #e84393; }
     
-    /* Etiqueta de aviso para cartones duplicados */
     .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
     .fila-duplicada { background-color: #ffeaa7; } 
   </style>
+  
+  <style id="estilosDinamicosMarca"></style>
   
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -67,6 +73,7 @@
   
   <main id="contenidoPrincipal">
     <div id="bannerCierre" class="banner-alerta">⚠️ EL REGISTRO DE CARTONES YA ESTÁ CERRADO</div>
+    <div id="bannerCuentaRegresiva" class="banner-cuenta-regresiva">⏳ EL REGISTRO CIERRA EN: <span id="tiempoRestante">00:00</span></div>
 
     <div class="formulario" style="margin-top:0;">
       <h3>Escanear Código QR</h3>
@@ -116,6 +123,7 @@
     let listaQR = [];
     let cartonesDuplicados = []; 
     let ipPublica = "", geoLatitud = "", geoLongitud = "";
+    let intervaloRegresivo = null;
 
     function emitirSonidoExito() {
       try {
@@ -138,18 +146,17 @@
         navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
       }
 
-      // CARGAR CONFIGURACIÓN TÉCNICA Y DISEÑO EN TIEMPO REAL (De index9)
       setTimeout(async () => {
         try {
           const { data: configGeneral } = await _supabase.from('configuracion').select('*').eq('id', 1).single();
           if (configGeneral) {
             CONFIG_SISTEMA.limite_cartones = configGeneral.limite_cartones;
-            CONFIG_SISTEMA.fecha_cierre = new Date(configGeneral.fecha_cierre);
             CONFIG_SISTEMA.caracteres_qr = configGeneral.caracteres_qr;
-            if (new Date() > CONFIG_SISTEMA.fecha_cierre) bloquearSistemaPorFecha();
+            CONFIG_SISTEMA.fecha_cierre = new Date(configGeneral.fecha_cierre);
+            iniciarMonitoreoTiempo();
           }
 
-          // Cargar personalización de diseño desde configuracion_sistema
+          // CARGAR DISEÑO Y HACERLO 100% DINÁMICO
           const { data: diseno } = await _supabase.from('configuracion_sistema').select('clave, valor');
           if (diseno) {
             let logoUrl = diseno.find(x => x.clave === 'diseno_logo_url')?.valor;
@@ -160,18 +167,86 @@
               imgEl.src = logoUrl;
               imgEl.style.display = "block";
             }
+            
             if (colorPrimario) {
+              // 1. Modificar elementos directos del DOM
               document.getElementById("btnRegistrar").style.background = colorPrimario;
               document.getElementById("headerRegistro").style.background = colorPrimario;
               document.querySelectorAll(".dinamico-th").forEach(th => th.style.background = colorPrimario);
+              
               document.getElementById("reader").style.borderColor = colorPrimario;
               document.getElementById("contador").style.color = colorPrimario;
               document.getElementById("contador").style.borderColor = colorPrimario;
+              
+              // Modificar enfoque de los inputs
+              document.querySelectorAll(".formulario input").forEach(input => {
+                input.addEventListener('focus', () => input.style.borderColor = colorPrimario);
+                input.addEventListener('blur', () => input.style.borderColor = '#ccc');
+              });
+
+              // 2. CORRECCIÓN ELEGANTE: Inyectar CSS en tiempo real para el escaner interno de html5-qrcode
+              // Esto cambia el color de los botones generados por la librería y el recuadro de escaneo activo
+              document.getElementById("estilosDinamicosMarca").innerHTML = `
+                #reader button {
+                  background-color: ${colorPrimario} !important;
+                  color: white !important;
+                  border: none !important;
+                  padding: 10px 20px !important;
+                  font-weight: bold !important;
+                  border-radius: 5px !important;
+                  cursor: pointer !important;
+                  transition: filter 0.2s !important;
+                }
+                #reader button:hover {
+                  filter: brightness(0.85) !important;
+                }
+                #reader a {
+                  color: ${colorPrimario} !important;
+                  font-weight: bold !important;
+                }
+                /* Forzado del color del visor de escaneo activo si la librería dibuja el cuadro de enfoque */
+                #reader__scan_region img {
+                  filter: hue-rotate(90deg) !important;
+                }
+              `;
             }
           }
         } catch (err) { console.error("Error cargando configuración remota:", err); }
       }, 500);
     });
+
+    function iniciarMonitoreoTiempo() {
+      if (!CONFIG_SISTEMA.fecha_cierre) return;
+      if (intervaloRegresivo) clearInterval(intervaloRegresivo);
+
+      intervaloRegresivo = setInterval(() => {
+        let ahoraMilisegundos = new Date().getTime();
+        let cierreMilisegundos = CONFIG_SISTEMA.fecha_cierre.getTime();
+        let diferenciaMilisegundos = cierreMilisegundos - ahoraMilisegundos;
+
+        if (diferenciaMilisegundos <= 0) {
+          clearInterval(intervaloRegresivo);
+          document.getElementById("bannerCuentaRegresiva").style.display = "none";
+          bloquearSistemaPorFecha();
+          return;
+        }
+
+        let quinceMinutosEnMs = 15 * 60 * 1000;
+        if (diferenciaMilisegundos <= quinceMinutosEnMs) {
+          let minutosRestantes = Math.floor(diferenciaMilisegundos / (1000 * 60));
+          let segundosRestantes = Math.floor((diferenciaMilisegundos % (1000 * 60)) / 1000);
+
+          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
+          let segundosTxt = segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes;
+
+          let bannerRegresivo = document.getElementById("bannerCuentaRegresiva");
+          bannerRegresivo.style.display = "block";
+          document.getElementById("tiempoRestante").innerText = `${minutosTxt}:${segundosTxt}`;
+        } else {
+          document.getElementById("bannerCuentaRegresiva").style.display = "none";
+        }
+      }, 1000);
+    }
 
     function bloquearSistemaPorFecha() {
       document.getElementById("bannerCierre").style.display = "block";
@@ -194,8 +269,7 @@
     }
 
     function onScanSuccess(decodedText) {
-      let ahora = new Date();
-      if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
+      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
         bloquearSistemaPorFecha();
         return;
       }
@@ -266,8 +340,7 @@
     document.getElementById("direccion").addEventListener("input", actualizarTabla);
 
     async function enviarAlBackend() {
-      let ahora = new Date();
-      if (CONFIG_SISTEMA.fecha_cierre && ahora > CONFIG_SISTEMA.fecha_cierre) {
+      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
         bloquearSistemaPorFecha();
         alert("El tiempo de registro de cartones ha expirado.");
         return;
