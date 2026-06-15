@@ -14,19 +14,18 @@
 
     main { padding: 20px; max-width: 600px; margin: auto; }
     
-    /* Lector QR con fondo claro */
-    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; }
+    /* Lector QR con fondo claro y transición */
+    #reader { width: 100%; max-width: 400px; margin: auto; border-radius: 8px; overflow: hidden; background: #f0f0f0; border: 2px dashed #4CAF50; transition: border-color 0.3s ease; }
     #reader video { width: 100% !important; object-fit: cover; }
-
+    
     .formulario { margin-top: 20px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     .formulario h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #edf2f7; padding-bottom: 8px; }
     .formulario input { width: 100%; margin: 8px 0; padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; box-sizing: border-box; }
-    .formulario input:focus { outline: none; border-color: #4CAF50; }
-
-    /* Banners de Control de Tiempo */
+    .formulario input:focus { outline: none; }
+    
     .banner-alerta { background: #ff7675; color: white; padding: 15px; text-align: center; font-weight: bold; border-radius: 6px; margin-bottom: 15px; display: none; font-size: 18px; }
     
-    /* Banner Cuenta Regresiva Optimizado (Más grande y visible) */
+    /* BANNER DE CUENTA REGRESIVA OPTIMIZADO (Mucho más grande y visible) */
     .banner-cuenta-regresiva { 
       background: #ff9f43; 
       color: white; 
@@ -36,12 +35,12 @@
       border-radius: 8px; 
       margin-bottom: 20px; 
       display: none; 
-      font-size: 22px; /* Incrementado para mayor impacto visual */
+      font-size: 22px; 
       box-shadow: 0 4px 10px rgba(255, 159, 67, 0.3);
-      animation: parpadeoAlerta 1.5s infinite; 
+      animation: parpadeo 1.5s infinite; 
     }
     .banner-cuenta-regresiva span {
-      font-size: 28px; /* El reloj en sí es aún más grande */
+      font-size: 28px; 
       display: inline-block;
       margin-left: 5px;
       background: rgba(0, 0, 0, 0.15);
@@ -49,44 +48,49 @@
       border-radius: 6px;
       letter-spacing: 1px;
     }
-    @keyframes parpadeoAlerta {
-      0% { opacity: 0.9; transform: scale(1); }
-      50% { opacity: 1; background: #ee5253; transform: scale(1.01); }
-      100% { opacity: 0.9; transform: scale(1); }
+    @keyframes parpadeo { 
+      0% { opacity: 0.9; transform: scale(1); } 
+      50% { opacity: 1; background: #ee5253; transform: scale(1.01); } 
+      100% { opacity: 0.9; transform: scale(1); } 
     }
 
+    /* Botones configurables */
     button { width: 100%; padding: 14px; background: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.2s, filter 0.2s; margin-top: 10px; }
     button:hover { filter: brightness(0.9); }
     button:disabled { background: #cccccc; cursor: not-allowed; }
 
-    /* Tabla de resultados */
     .table-container { width: 100%; overflow-x: auto; margin-top: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
     th, td { border-bottom: 1px solid #ddd; padding: 12px 10px; text-align: center; }
     th { background: #4CAF50; color: white; }
-
     label { display: flex; align-items: center; margin: 10px 0; font-weight: 500; cursor: pointer; }
     label input[type="checkbox"] { margin-right: 10px; width: 18px; height: 18px; }
-
+    
+    /* Cuadro de texto QR */
     #resultadoQR { margin-top: 15px; padding: 12px; background: #eef2f7; border-radius: 6px; text-align: center; font-size: 0.95rem; font-weight: bold; transition: all 0.3s ease; border: 1px solid transparent; }
     .scan-exito { background: #2ecc71 !important; color: white !important; border-color: #27ae60 !important; transform: scale(1.02); }
-
+    
+    /* TEXTO DE CONTADOR GRANDE */
     #contador { margin-top: 15px; font-size: 24px; color: #27ae60; font-weight: 800; text-align: center; background: #e8f5e9; padding: 10px; border-radius: 6px; border: 1px dashed #4CAF50; letter-spacing: 0.5px; transition: all 0.3s ease; }
     
+    /* Capa de carga */
     .loading { opacity: 0.5; pointer-events: none; position: relative; }
+    
+    /* Botón rojo de eliminar */
     .btn-eliminar { background: #ff7675; margin: 0; padding: 6px 12px; font-size: 13px; width: auto; border-radius: 4px; color: white; border: none; cursor: pointer; }
     .btn-eliminar:hover { background: #e84393; }
-
+    
     .alerta-duplicado { color: #d63031; font-weight: bold; font-size: 12px; display: block; margin-top: 4px; }
-    .fila-duplicada { background-color: #ffeaa7; } /* Resalta cartones repetidos en amarillo suave */
+    .fila-duplicada { background-color: #ffeaa7; } 
   </style>
+  
   <style id="estilosDinamicosMarca"></style>
+  
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="conexion.js"></script>
 </head>
 <body>
-
   <header id="headerRegistro">
     <img id="logoDinamico" class="header-logo" src="" alt="Bingo Logo">
     <h2 id="tituloHeader">Registro de Cartones - TuBingo Pro</h2>
@@ -98,11 +102,9 @@
 
     <div class="formulario" style="margin-top:0;">
       <h3>Escanear Código QR</h3>
-      <label>
-        <input type="checkbox" id="leerTodos" checked> Permitir múltiples cartones consecutivos
-      </label>
+      <label><input type="checkbox" id="leerTodos" checked> Permitir múltiples cartones</label>
       <div id="reader"></div>
-      <div id="resultadoQR">Esperando acción o detección de código...</div>
+      <div id="resultadoQR">Esperando acción o escaneo...</div>
       <div id="contador">Cartones en lista: 0</div>
     </div>
 
@@ -129,7 +131,7 @@
           <tr>
             <th class="dinamico-th">#</th>
             <th class="dinamico-th">Serie (Cartón)</th>
-            <th class="dinamico-th">Ubicación Asignada</th>
+            <th class="dinamico-th">Ubicación</th>
             <th class="dinamico-th">Acción</th>
           </tr>
         </thead>
@@ -141,20 +143,12 @@
   </main>
 
   <script>
-    // Parámetros por defecto sobreescribibles desde Supabase
-    let CONFIG_SISTEMA = {
-      limite_cartones: 5,
-      fecha_cierre: null,
-      caracteres_qr: 6
-    };
-
+    let CONFIG_SISTEMA = { limite_cartones: 5, fecha_cierre: null, caracteres_qr: 6 };
     let listaQR = [];
-    let cartonesDuplicados = []; // Almacena cartones que ya existen en la base de datos global
-    let ipPublica = "";
-    let geoLatitud = "";
-    let geoLongitud = "";
-    let html5QrcodeScanner = null;
+    let cartonesDuplicados = []; 
+    let ipPublica = "", geoLatitud = "", geoLongitud = "";
     let intervaloRegresivo = null;
+    let scanner = null;
 
     function emitirSonidoExito() {
       try {
@@ -168,27 +162,17 @@
         gainNode.connect(audioCtx.destination);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.12); 
-      } catch (e) { console.error("El navegador bloqueó el audio inicial:", e); }
+      } catch (e) { console.error(e); }
     }
 
-    // Inicialización del entorno, carga de geolocalización e IP
     window.addEventListener('load', async () => {
-      fetch('https://api.ipify.org?format=json')
-        .then(res => res.json())
-        .then(d => ipPublica = d.ip)
-        .catch(e => console.log("Error IP"));
-
+      fetch('https://api.ipify.org?format=json').then(res => res.json()).then(d => ipPublica = d.ip).catch(e => {});
       if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; },
-          e => console.log("Permiso de GPS denegado o no disponible.")
-        );
+        navigator.geolocation.getCurrentPosition(p => { geoLatitud = p.coords.latitude; geoLongitud = p.coords.longitude; }, e => {});
       }
 
-      // Carga asíncrona de configuraciones dinámicas de Supabase
       setTimeout(async () => {
         try {
-          // 1. Configuración de límites y tiempos
           const { data: configGeneral } = await _supabase.from('configuracion').select('*').eq('id', 1).single();
           if (configGeneral) {
             CONFIG_SISTEMA.limite_cartones = configGeneral.limite_cartones;
@@ -197,7 +181,6 @@
             iniciarMonitoreoTiempo();
           }
 
-          // 2. Personalización de Marca (Colores y Logo)
           const { data: diseno } = await _supabase.from('configuracion_sistema').select('clave, valor');
           if (diseno) {
             let logoUrl = diseno.find(x => x.clave === 'diseno_logo_url')?.valor;
@@ -208,53 +191,76 @@
               imgEl.src = logoUrl;
               imgEl.style.display = "block";
             }
+            
             if (colorPrimario) {
-              // Inyección dinámica de colores de marca del panel administrador
               document.getElementById("btnRegistrar").style.background = colorPrimario;
               document.getElementById("headerRegistro").style.background = colorPrimario;
               document.querySelectorAll(".dinamico-th").forEach(th => th.style.background = colorPrimario);
+              
               document.getElementById("reader").style.borderColor = colorPrimario;
               document.getElementById("contador").style.color = colorPrimario;
               document.getElementById("contador").style.borderColor = colorPrimario;
               
-              let estiloFoco = document.createElement("style");
-              estiloFoco.innerHTML = `.formulario input:focus { border-color: ${colorPrimario} !important; box-shadow: 0 0 4px ${colorPrimario}40; }`;
-              document.head.appendChild(estiloFoco);
+              document.querySelectorAll(".formulario input").forEach(input => {
+                input.addEventListener('focus', () => input.style.borderColor = colorPrimario);
+                input.addEventListener('blur', () => input.style.borderColor = '#ccc');
+              });
+
+              document.getElementById("estilosDinamicosMarca").innerHTML = `
+                #reader button {
+                  background-color: ${colorPrimario} !important;
+                  color: white !important;
+                  border: none !important;
+                  padding: 10px 20px !important;
+                  font-weight: bold !important;
+                  border-radius: 5px !important;
+                  cursor: pointer !important;
+                  transition: filter 0.2s !important;
+                }
+                #reader button:hover {
+                  filter: brightness(0.85) !important;
+                }
+                #reader a {
+                  color: ${colorPrimario} !important;
+                  font-weight: bold !important;
+                }
+                #reader__scan_region img {
+                  filter: hue-rotate(90deg) !important;
+                }
+              `;
             }
           }
-        } catch (err) {
-          console.error("Error sincronizando variables de entorno:", err);
-        }
+        } catch (err) { console.error("Error cargando configuración remota:", err); }
       }, 500);
-
-      iniciarEscanerCamara();
     });
 
-    // Control preciso de tiempo de cierre y cuenta regresiva
     function iniciarMonitoreoTiempo() {
       if (!CONFIG_SISTEMA.fecha_cierre) return;
-
       if (intervaloRegresivo) clearInterval(intervaloRegresivo);
 
       intervaloRegresivo = setInterval(() => {
-        let ahora = new Date().getTime();
-        let diferencia = CONFIG_SISTEMA.fecha_cierre.getTime() - ahora;
+        let ahoraMilisegundos = new Date().getTime();
+        let cierreMilisegundos = CONFIG_SISTEMA.fecha_cierre.getTime();
+        let diferenciaMilisegundos = cierreMilisegundos - ahoraMilisegundos;
 
-        if (diferencia <= 0) {
+        if (diferenciaMilisegundos <= 0) {
           clearInterval(intervaloRegresivo);
           document.getElementById("bannerCuentaRegresiva").style.display = "none";
           bloquearSistemaPorFecha();
           return;
         }
 
-        // Se activa el banner si faltan 15 minutos o menos para el cierre
-        if (diferencia <= 15 * 60 * 1000) {
-          let minutos = Math.floor(diferencia / (1000 * 60));
-          let segundos = Math.floor((diferencia % (1000 * 60)) / 1000);
-          
-          document.getElementById("bannerCuentaRegresiva").style.display = "block";
-          document.getElementById("tiempoRestante").innerText = 
-            (minutos < 10 ? "0" + minutos : minutos) + ":" + (segundos < 10 ? "0" + segundos : segundos);
+        let quinceMinutosEnMs = 15 * 60 * 1000;
+        if (diferenciaMilisegundos <= quinceMinutosEnMs) {
+          let minutosRestantes = Math.floor(diferenciaMilisegundos / (1000 * 60));
+          let segundosRestantes = Math.floor((diferenciaMilisegundos % (1000 * 60)) / 1000);
+
+          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
+          let segundosTxt = segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes;
+
+          let bannerRegresivo = document.getElementById("bannerCuentaRegresiva");
+          bannerRegresivo.style.display = "block";
+          document.getElementById("tiempoRestante").innerText = `${minutosTxt}:${segundosTxt}`;
         } else {
           document.getElementById("bannerCuentaRegresiva").style.display = "none";
         }
@@ -264,95 +270,91 @@
     function bloquearSistemaPorFecha() {
       document.getElementById("bannerCierre").style.display = "block";
       document.getElementById("btnRegistrar").disabled = true;
+      document.getElementById("btnRegistrar").innerText = "Registro Cerrado por Fecha Límite";
       document.getElementById("contenidoPrincipal").classList.add("loading");
-      if (html5QrcodeScanner) html5QrcodeScanner.clear();
+      if (scanner) scanner.clear();
     }
 
     function actualizarContador() {
-      let cont = document.getElementById("contador");
-      cont.innerText = "Cartones en lista: " + listaQR.length;
+      document.getElementById("contador").innerText = "Cartones en lista: " + listaQR.length;
     }
 
-    // Regla de formato limpia para extraer la serie (después del @ o últimos dígitos)
     function procesarFormato(texto) {
       let formato = CONFIG_SISTEMA.caracteres_qr;
       let pos = texto.indexOf("@");
       if (pos !== -1 && texto.length > pos + formato) {
-        return texto.substring(pos + 1, pos + 1 + formato);
+        return texto.substring(pos+1, pos+1+formato);
       }
-      return texto.length > 20 ? texto.substring(texto.length - formato) : texto;
+      return texto;
     }
 
-    function iniciarEscanerCamara() {
-      html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-        fps: 15, 
-        qrbox: { width: 250, height: 250 },
-        rememberLastUsedCamera: true
-      });
+    function onScanSuccess(decodedText) {
+      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
+        bloquearSistemaPorFecha();
+        return;
+      }
 
-      html5QrcodeScanner.render(async (decodedText) => {
-        let codigoProcesado = procesarFormato(decodedText);
-        let cajaInfo = document.getElementById("resultadoQR");
-
-        if (listaQR.includes(codigoProcesado)) {
-          cajaInfo.innerText = "⚠️ Este código ya lo tienes en tu lista temporal.";
-          cajaInfo.style.background = "#ffeaa7";
-          return;
-        }
-
-        if (!document.getElementById("leerTodos").checked && listaQR.length > 0) {
-          cajaInfo.innerText = "Modo un solo cartón activo. Lista limpia.";
-          listaQR = [];
-        }
-
+      let procesado = procesarFormato(decodedText);
+      let contenedorResultado = document.getElementById("resultadoQR");
+      
+      if (!listaQR.includes(procesado)) {
         emitirSonidoExito();
-        cajaInfo.innerText = "¡Leído con éxito!: " + codigoProcesado;
-        cajaInfo.className = "scan-exito";
-        setTimeout(() => cajaInfo.className = "", 1500);
+        contenedorResultado.innerText = "¡Leído con éxito!: " + procesado;
+        contenedorResultado.classList.add("scan-exito");
+        
+        setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 1000);
 
-        listaQR.push(codigoProcesado);
+        if (document.getElementById("leerTodos").checked) {
+          listaQR.push(procesado);
+        } else {
+          listaQR = [procesado];
+        }
         actualizarTabla();
-
-      }, (errorMessage) => {});
+      } else {
+        contenedorResultado.innerText = "⚠️ El código " + procesado + " ya lo tienes en tu lista temporal.";
+      }
     }
+
+    scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250, rememberLastUsedCamera: true });
+    scanner.render(onScanSuccess, (err) => {});
 
     function actualizarTabla() {
       let tbody = document.querySelector("#tabla tbody");
       tbody.innerHTML = "";
+      let ciudadInput = document.getElementById("ciudad").value.trim() || "---";
+      let direccionInput = document.getElementById("direccion").value.trim() || "---";
 
-      let ciudad = document.getElementById("ciudad").value.trim() || "---";
-      let direccion = document.getElementById("direccion").value.trim() || "---";
-
-      if (listaQR.length === 0) {
+      if(listaQR.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" style="color:#999; padding: 15px;">Ningún cartón escaneado aún</td></tr>`;
         actualizarContador();
         return;
       }
 
-      listaQR.forEach((qr, idx) => {
-        let esDuplicado = cartonesDuplicados.includes(qr);
+      listaQR.forEach((qr, index) => {
         let fila = document.createElement("tr");
-        if (esDuplicado) fila.className = "fila-duplicada";
+        let esDuplicado = cartonesDuplicados.includes(qr);
+        if(esDuplicado) fila.classList.add("fila-duplicada");
 
         fila.innerHTML = `
-          <td>${idx + 1}</td>
+          <td>${index + 1}</td>
           <td>
             <strong>${qr}</strong>
             ${esDuplicado ? '<span class="alerta-duplicado">⚠️ Ya registrado por otro jugador</span>' : ''}
           </td>
-          <td>${ciudad} - ${direccion}</td>
-          <td><button class="btn-eliminar" onclick="eliminarCarton(${idx})">Eliminar</button></td>
+          <td>${ciudadInput} - ${direccionInput}</td>
+          <td>
+            <button class="btn-eliminar" onclick="eliminarCarton(${index})">Eliminar</button>
+          </td>
         `;
         tbody.appendChild(fila);
       });
-
       actualizarContador();
     }
 
-    function eliminarCarton(idx) {
-      let borrado = listaQR[idx];
-      listaQR.splice(idx, 1);
-      cartonesDuplicados = cartonesDuplicados.filter(x => x !== borrado);
+    function eliminarCarton(index) {
+      let qrRemovido = listaQR[index];
+      listaQR.splice(index, 1);
+      cartonesDuplicados = cartonesDuplicados.filter(item => item !== qrRemovido);
       actualizarTabla();
     }
 
@@ -360,6 +362,12 @@
     document.getElementById("direccion").addEventListener("input", actualizarTabla);
 
     async function enviarAlBackend() {
+      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
+        bloquearSistemaPorFecha();
+        alert("El tiempo de registro de cartones ha expirado.");
+        return;
+      }
+
       let nombre = document.getElementById("nombre").value.trim();
       let celular = document.getElementById("celular").value.trim();
       let correo = document.getElementById("correo").value.trim();
@@ -369,39 +377,61 @@
       let codigoIngresado = document.getElementById("codigoCanal").value.trim().toUpperCase();
 
       if (!nombre || !celular || !correo || !ciudad || !direccion || !codigoIngresado) {
-        alert("Por favor, llena todos los campos obligatorios de tus datos personales.");
+        alert("Por favor complete todos los campos requeridos.");
         return;
       }
 
       if (listaQR.length === 0) {
-        alert("Tu lista de cartones está vacía. Escanea al menos un código QR antes de enviar.");
-        return;
-      }
-
-      if (listaQR.length > CONFIG_SISTEMA.limite_cartones) {
-        alert(`Límite excedido: Solo puedes registrar un máximo de ${CONFIG_SISTEMA.limite_cartones} cartones por transacción.`);
+        alert("Escanee al menos un cartón QR.");
         return;
       }
 
       let mainEl = document.getElementById("contenidoPrincipal");
       let btn = document.getElementById("btnRegistrar");
       mainEl.classList.add("loading");
-      btn.innerText = "Procesando registros en base de datos...";
+      btn.innerText = "Verificando códigos...";
+
+      cartonesDuplicados = [];
 
       try {
-        // 1. Verificación obligatoria de clave de seguridad de WhatsApp
-        const { data: configCanal } = await _supabase.from('configuracion_sistema').select('valor').eq('clave', 'codigo_canal_whatsapp').maybeSingle();
+        const { data: configCanal, error: errConfig } = await _supabase
+          .from('configuracion_sistema')
+          .select('valor')
+          .eq('clave', 'codigo_canal_whatsapp')
+          .maybeSingle();
+
+        if (errConfig) throw errConfig;
+
         if (!configCanal || codigoIngresado !== configCanal.valor.toUpperCase()) {
-          alert("❌ El código secreto del canal de WhatsApp es inválido. Revisa la clave fijada en el grupo.");
+          alert("❌ El Código Secreto del Canal de WhatsApp es incorrecto.");
           mainEl.classList.remove("loading");
           btn.innerText = "Registrar Cartones en el Sistema";
           return;
         }
 
-        // 2. Validación de duplicados global contra registros existentes
-        const { data: existentes } = await _supabase.from('registros_bingo').select('carton').in('carton', listaQR);
-        if (existentes && existentes.length > 0) {
-          cartonesDuplicados = existentes.map(x => x.carton);
+        const { data: existentes, error: errConteo } = await _supabase
+          .from('registros_bingo')
+          .select('id')
+          .eq('telefono', celular);
+
+        if (errConteo) throw errConteo;
+
+        if (existentes.length + listaQR.length > CONFIG_SISTEMA.limite_cartones) {
+          alert(`¡Cupo Excedido! Límite actual de máximo ${CONFIG_SISTEMA.limite_cartones}.`);
+          mainEl.classList.remove("loading");
+          btn.innerText = "Registrar Cartones en el Sistema";
+          return;
+        }
+
+        const { data: yaRegistrados, error: errValidacion } = await _supabase
+          .from('registros_bingo')
+          .select('carton')
+          .in('carton', listaQR);
+
+        if (errValidacion) throw errValidacion;
+
+        if (yaRegistrados && yaRegistrados.length > 0) {
+          cartonesDuplicados = yaRegistrados.map(row => row.carton);
           actualizarTabla();
           alert("¡Atención! Se detectaron cartones duplicados en uso por otra persona.");
           mainEl.classList.remove("loading");
@@ -409,7 +439,6 @@
           return;
         }
 
-        // 3. Inserción estructurada
         let ubicacionCompleta = `${ciudad} - ${direccion}`;
         let filasAInsertar = listaQR.map(serie => ({
           carton: serie, nombre: nombre, correo: correo, telefono: celular,
@@ -422,10 +451,7 @@
 
         alert("¡Todos tus cartones han sido registrados exitosamente!");
         listaQR = [];
-        cartonesDuplicados = [];
         actualizarTabla();
-        
-        // Limpieza de campos de control
         document.getElementById("nombre").value = "";
         document.getElementById("celular").value = "";
         document.getElementById("correo").value = "";
@@ -434,12 +460,8 @@
         document.getElementById("vendedor").value = "";
         document.getElementById("codigoCanal").value = "";
 
-      } catch (err) { 
-        alert("Error: " + err.message); 
-      } finally { 
-        mainEl.classList.remove("loading"); 
-        btn.innerText = "Registrar Cartones en el Sistema"; 
-      }
+      } catch (err) { alert("Error: " + err.message); } 
+      finally { mainEl.classList.remove("loading"); btn.innerText = "Registrar Cartones en el Sistema"; }
     }
   </script>
 </body>
