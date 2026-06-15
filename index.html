@@ -34,6 +34,10 @@
     button:hover { filter: brightness(0.9); }
     button:disabled { background: #cccccc; cursor: not-allowed; }
     
+    /* Botón personalizado para diseño del cargador de PDF */
+    .btn-pdf-diseno { display: block; text-align: center; background: #34495e; color: white; padding: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; margin-top: 15px; transition: background 0.2s; }
+    .btn-pdf-diseno:hover { background: #2c3e50; }
+
     .table-container { width: 100%; overflow-x: auto; margin-top: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
     th, td { border-bottom: 1px solid #ddd; padding: 12px 10px; text-align: center; }
@@ -61,6 +65,7 @@
   
   <style id="estilosDinamicosMarca"></style>
   
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="conexion.js"></script>
@@ -80,6 +85,12 @@
       <label><input type="checkbox" id="leerTodos" checked> Permitir múltiples cartones</label>
       <div id="reader"></div>
       <div id="resultadoQR">Esperando acción o escaneo...</div>
+
+      <div style="margin-top:15px; border-top: 1px dashed #ccc; padding-top:15px;">
+        <label style="font-weight: bold; margin-bottom: 5px; color:#34495e;">📄 ¿Tienes tus cartones en PDF?</label>
+        <label for="inputSubirPdf" class="btn-pdf-diseno">📂 Seleccionar y Procesar Archivo PDF</label>
+        <input type="file" id="inputSubirPdf" accept=".pdf" style="display:none;" onchange="procesarCartonesDesdePdf(this)">
+      </div>
       
       <div id="contador">Cartones en lista: 0</div>
     </div>
@@ -118,7 +129,12 @@
     </div>
   </main>
 
+  <canvas id="canvasPdfRender" style="display:none;"></canvas>
+
   <script>
+    // Sincronizar ruta interna para PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
     let CONFIG_SISTEMA = { limite_cartones: 5, fecha_cierre: null, caracteres_qr: 6 };
     let listaQR = [];
     let cartonesDuplicados = []; 
@@ -156,7 +172,6 @@
             iniciarMonitoreoTiempo();
           }
 
-          // CARGAR DISEÑO Y HACERLO 100% DINÁMICO
           const { data: diseno } = await _supabase.from('configuracion_sistema').select('clave, valor');
           if (diseno) {
             let logoUrl = diseno.find(x => x.clave === 'diseno_logo_url')?.valor;
@@ -169,7 +184,6 @@
             }
             
             if (colorPrimario) {
-              // 1. Modificar elementos directos del DOM
               document.getElementById("btnRegistrar").style.background = colorPrimario;
               document.getElementById("headerRegistro").style.background = colorPrimario;
               document.querySelectorAll(".dinamico-th").forEach(th => th.style.background = colorPrimario);
@@ -178,14 +192,11 @@
               document.getElementById("contador").style.color = colorPrimario;
               document.getElementById("contador").style.borderColor = colorPrimario;
               
-              // Modificar enfoque de los inputs
               document.querySelectorAll(".formulario input").forEach(input => {
                 input.addEventListener('focus', () => input.style.borderColor = colorPrimario);
                 input.addEventListener('blur', () => input.style.borderColor = '#ccc');
               });
 
-              // 2. CORRECCIÓN ELEGANTE: Inyectar CSS en tiempo real para el escaner interno de html5-qrcode
-              // Esto cambia el color de los botones generados por la librería y el recuadro de escaneo activo
               document.getElementById("estilosDinamicosMarca").innerHTML = `
                 #reader button {
                   background-color: ${colorPrimario} !important;
@@ -204,7 +215,6 @@
                   color: ${colorPrimario} !important;
                   font-weight: bold !important;
                 }
-                /* Forzado del color del visor de escaneo activo si la librería dibuja el cuadro de enfoque */
                 #reader__scan_region img {
                   filter: hue-rotate(90deg) !important;
                 }
@@ -236,7 +246,7 @@
           let minutosRestantes = Math.floor(diferenciaMilisegundos / (1000 * 60));
           let segundosRestantes = Math.floor((diferenciaMilisegundos % (1000 * 60)) / 1000);
 
-          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutosRestantes;
+          let minutosTxt = minutosRestantes < 10 ? "0" + minutosRestantes : minutesRestantes;
           let segundosTxt = segundosRestantes < 10 ? "0" + segundosRestantes : segundosRestantes;
 
           let bannerRegresivo = document.getElementById("bannerCuentaRegresiva");
@@ -297,6 +307,89 @@
 
     let scanner = new Html5QrcodeScanner("reader", { fps: 15, qrbox: 250 });
     scanner.render(onScanSuccess, (err) => {});
+
+    /* =========================================================================
+       NUEVA FUNCIÓN: PROCESAR CARTONES DESDE ARCHIVOS PDF SELECCIONADOS
+       ========================================================================= */
+    async function procesarCartonesDesdePdf(input) {
+      if (CONFIG_SISTEMA.fecha_cierre && (new Date().getTime() >= CONFIG_SISTEMA.fecha_cierre.getTime())) {
+        bloquearSistemaPorFecha();
+        alert("El tiempo de registro ha finalizado.");
+        return;
+      }
+
+      let archivo = input.files[0];
+      if (!archivo) return;
+
+      let contenedorResultado = document.getElementById("resultadoQR");
+      let mainEl = document.getElementById("contenidoPrincipal");
+      
+      mainEl.classList.add("loading");
+      contenedorResultado.innerText = "📄 Leyendo documento PDF, por favor espere...";
+
+      try {
+        let arrayBuffer = await archivo.arrayBuffer();
+        let pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let totalPaginas = pdf.numPages;
+        let qrEncontradosEnPdf = 0;
+
+        let html5QrCodeScannerInstance = new Html5Qrcode("canvasPdfRender");
+        let canvas = document.getElementById("canvasPdfRender");
+        let ctx = canvas.getContext("2d");
+
+        // Recorrer cada una de las páginas del PDF
+        for (let paginaNum = 1; paginaNum <= totalPaginas; paginaNum++) {
+          contenedorResultado.innerText = `Procesando página ${paginaNum} de ${totalPaginas}...`;
+          
+          let pagina = await pdf.getPage(paginaNum);
+          let optimizacionEscala = 2.0; // Multiplicador de escala para garantizar nitidez del QR
+          let vista = pagina.getViewport({ scale: optimizacionEscala });
+
+          canvas.width = vista.width;
+          canvas.height = vista.height;
+
+          let renderContext = { canvasContext: ctx, viewport: vista };
+          await pagina.render(renderContext).promise;
+
+          // Conversión de la página dibujada a un formato de imagen procesable
+          let imagenMuestraBase64 = canvas.toDataURL("image/jpeg");
+
+          // Pasar la imagen convertida al motor de escaneo nativo
+          try {
+            let resultadoImagen = await html5QrCodeScannerInstance.scanImage(imagenMuestraBase64);
+            if (resultadoImagen) {
+              let codigoLimpio = procesarFormato(resultadoImagen);
+              
+              if (!listaQR.includes(codigoLimpio)) {
+                listaQR.push(codigoLimpio);
+                qrEncontradosEnPdf++;
+              }
+            }
+          } catch (errorScan) {
+            // Si una página en específico no contiene códigos legibles, continúa sin caerse
+            console.log(`Página ${paginaNum} escaneada sin códigos QR legibles.`);
+          }
+        }
+
+        if (qrEncontradosEnPdf > 0) {
+          emitirSonidoExito();
+          contenedorResultado.innerText = `🎉 ¡Éxito! Se añadieron ${qrEncontradosEnPdf} cartones nuevos desde el PDF.`;
+          contenedorResultado.classList.add("scan-exito");
+          setTimeout(() => { contenedorResultado.classList.remove("scan-exito"); }, 2500);
+          actualizarTabla();
+        } else {
+          alert("⚠️ No se detectaron códigos QR claros dentro del PDF.\n\nAsegúrate de que el documento contenga las imágenes de tus tablas impresas con buena nitidez.");
+          contenedorResultado.innerText = "Esperando acción o escaneo...";
+        }
+
+      } catch (err) {
+        alert("Error al abrir el archivo PDF: " + err.message);
+        contenedorResultado.innerText = "Error leyendo archivo.";
+      } finally {
+        mainEl.classList.remove("loading");
+        input.value = ""; // Limpiar el input para permitir volver a subir el mismo archivo si es necesario
+      }
+    }
 
     function actualizarTabla() {
       let tbody = document.querySelector("#tabla tbody");
